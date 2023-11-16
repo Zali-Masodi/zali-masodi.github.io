@@ -1,0 +1,138 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+.logoLink {
+  display: inline-block;
+}
+
+
+header{
+  background-color: rgba(0, 0, 0, 0.8);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  position: fixed;
+  width: 100%;
+  top: 0;
+  transition: background-color 0.5s ease;
+}
+
+.navbarList {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.navbarList a{
+  color: white;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 30px;
+  letter-spacing: 1px;
+  word-spacing: 1px;
+  font-weight: 700;
+  text-decoration: none solid rgb(68, 68, 68);
+  font-style: italic;
+  font-variant: normal;
+}
+
+.mainTitle{
+  color: rgb(68, 68, 68);
+  font-family: "Courier New", Courier, monospace;
+  font-size: 50px;
+  letter-spacing: 1px;
+  word-spacing: 1px;
+  font-weight: 700;
+  font-style: italic;
+  font-variant: normal;
+  margin: auto;
+  
+  width: 100%;
+}
+
+.mainTitleElement {
+  width: 100%;
+  display: flex;
+  justify-content: center; /* Horizontal centering */
+  align-items: center;
+}
+
+.navbarList a:hover {
+  color: rgb(150, 150, 144);
+}
+
+.headerLogo {
+  margin-top: 15px;
+  margin-bottom: 15px;
+  margin-left: 25%;
+}
+
+
+.footer {
+  background-color: rgba(0, 0, 0, 0.8);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 100%;
+  padding: 10px;
+}
+
+.footerComponent {
+  margin-right: 40px;
+  display: inline-block;
+}
+
+main {
+  margin: 0;
+  /*padding: 7%;*/
+  padding-top: 7%;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh; /* Make sure the body takes at least the full viewport height */
+}
+
+.mainTitle{
+  display: flex;
+  justify-content: center; /* Horizontal centering */
+  align-items: center;
+}
+
+
+
+.mainServices{
+  display: flex;
+  justify-content: center; /* Horizontal centering */
+  align-items: center;
+}
+
+.mainAboutTitle {
+  font-family: "Courier New", Courier, monospace;
+  word-spacing: 1px;
+  font-variant: normal;
+}
+
+.mainAboutName {
+  font-family: "Courier New", Courier, monospace;
+  word-spacing: 1px;
+  font-variant: normal;
+}
+
+.mainAboutText {
+  font-family: "Courier New", Courier, monospace;
+  word-spacing: 1px;
+  font-variant: normal;
+}
+
+.mainHoursTitle{
+  font-family: "Courier New", Courier, monospace;
+  word-spacing: 1px;
+  font-variant: normal;
+}
+
+.mainHoursList{
+  font-family: "Courier New", Courier, monospace;
+  word-spacing: 20px;
+  font-variant: normal;
+}
+

@@ -1,6 +1,11 @@
 import React from 'react'
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  lang: 'EN' | 'DE'
+  setLang: (lang: 'EN' | 'DE') => void
+}
+
+const Header: React.FC<HeaderProps> = ({ lang, setLang }) => {
   return (
     <header
       style={{
@@ -21,7 +26,19 @@ const Header: React.FC = () => {
       </nav>
 
       <div>
-        <a href="index_DE.html" style={{ marginLeft: '1rem' }}>DE</a>
+        <button
+          onClick={() => setLang('EN')}
+          style={{ marginRight: '0.5rem' }}
+          disabled={lang === 'EN'}
+        >
+          EN
+        </button>
+        <button
+          onClick={() => setLang('DE')}
+          disabled={lang === 'DE'}
+        >
+          DE
+        </button>
       </div>
     </header>
   )

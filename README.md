@@ -118,6 +118,7 @@ git push origin branch-name
 Still on your project branch:
 
 ```bash
+npm run build
 npm run deploy
 ```
 

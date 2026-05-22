@@ -147,7 +147,7 @@ gh-pages         → deployed static website
 * Only one project can be live per repo on GitHub Pages (via `gh-pages` branch)
 * Keeping the same setup across projects reduces confusion and setup time
 
-
+<!--
 To create a new page:
 
 Start with an empty branch. 
@@ -218,3 +218,5 @@ This will:
 build the project
 push /dist to gh-pages
 update your live site
+
+-->

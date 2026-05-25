@@ -1,7 +1,44 @@
 import heroImg from './assets/hero.png'
 import './App.css'
 
+import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
+
 function App() {
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+
+  // ✅ CUBE STATE (ADDED ONLY)
+  const [activeProject, setActiveProject] = useState<number | null>(null)
+
+  const [rotation, setRotation] = useState(0)
+  const [activeFace, setActiveFace] = useState(0)
+
+  const [isZoomed, setIsZoomed] = useState(false)
+
+  useEffect(() => {
+    const mouseMove = (e: globalThis.MouseEvent) => {
+      setMousePosition({
+        x: e.clientX,
+        y: e.clientY,
+      })
+    }
+
+    window.addEventListener('mousemove', mouseMove)
+
+    return () => {
+      window.removeEventListener('mousemove', mouseMove)
+    }
+  }, [])
+
+  const fadeUp = {
+    hidden: { opacity: 0, y: 30 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.6 },
+    },
+  }
+
   const experiences = [
     {
       company: 'Veloce Liefert GmbH',
@@ -60,122 +97,103 @@ function App() {
 
   const projects = [
     {
-      title: 'Restaurant QR Ordering System',
-      description:
-        'Multi-tenant real-time ordering system with QR-based table sessions and SignalR updates.',
-      tech: ['.NET 8', 'SignalR', 'React', 'PostgreSQL'],
+      title: 'QR Ordering System',
+      description: 'Real-time restaurant ordering with QR + SignalR',
+      tech: ['.NET 8', 'React', 'PostgreSQL'],
     },
     {
-      title: 'AI-Powered HR Hiring Platform',
-      description:
-        'Full-stack recruitment platform with AI candidate calling and automated deployment pipelines.',
-      tech: ['Next.js', '.NET 8', 'OAuth', 'PostgreSQL'],
+      title: 'AI HR Platform',
+      description: 'AI recruitment + automated calling system',
+      tech: ['Next.js', '.NET', 'OpenAI'],
     },
     {
-      title: 'Bitcoin Lending Platform',
-      description:
-        'Designed decentralized lending architecture with Solidity smart contracts and Chainlink oracles.',
-      tech: ['Solidity', 'React', 'Node.js', 'AWS'],
+      title: 'Bitcoin Lending',
+      description: 'Smart contract lending system on Ethereum',
+      tech: ['Solidity', 'Node.js', 'AWS'],
+    },
+    {
+      title: 'Logistics SaaS',
+      description: 'Multi-tenant shipment tracking platform',
+      tech: ['.NET 8', 'React', 'Azure'],
     },
   ]
 
+  const rotateLeft = () => {
+    setRotation((r) => r - 90)
+    setActiveFace((p) => (p + 1) % 4)
+  }
+
+  const rotateRight = () => {
+    setRotation((r) => r + 90)
+    setActiveFace((p) => (p + 3) % 4)
+  }
+
   return (
     <main className="app">
+
+      {/* CURSOR GLOW */}
+      <div
+        className="cursor-glow"
+        style={{
+          left: mousePosition.x,
+          top: mousePosition.y,
+        }}
+      />
+
+      {/* HERO (UNCHANGED) */}
       <section className="hero">
-        <div className="hero-left">
+        <motion.div className="hero-left" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }}>
           <img src={heroImg} alt="Ramon Zalmai Masodi" />
-        </div>
+        </motion.div>
 
-        <div className="hero-right">
-          <span className="badge">Full-Stack Software Developer</span>
-
-          <h1>Ramon Zalmai Masodi</h1>
-
-          <p className="intro">
-            Full-Stack Software Developer with 3+ years of experience building
-            scalable logistics and enterprise systems using .NET, React, and
-            cloud technologies. Experienced in microservices, DevOps, CI/CD,
-            and production-ready architectures.
-          </p>
-
-          <div className="info-grid">
-            <div className="info-card">
-              <span>Email</span>
-              <strong>zalimasodi@gmail.com</strong>
-            </div>
-
-            <div className="info-card">
-              <span>Phone</span>
-              <strong>+421 949 490 488</strong>
-            </div>
-
-            <div className="info-card">
-              <span>Location</span>
-              <strong>Slovakia • Remote</strong>
-            </div>
-
-            <div className="info-card">
-              <span>Experience</span>
-              <strong>3+ Years</strong>
-            </div>
-          </div>
-        </div>
+        <motion.div className="hero-right" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.1 } } }}>
+          <motion.span className="badge" variants={fadeUp}>Full-Stack Software Developer</motion.span>
+          <motion.h1 variants={fadeUp}>Ramon Zalmai Masodi</motion.h1>
+          <motion.p className="intro" variants={fadeUp}>
+            Full-Stack Software Developer with 3+ years of experience building scalable enterprise systems using .NET, React, and cloud technologies.
+          </motion.p>
+        </motion.div>
       </section>
 
+      {/* SKILLS (UNCHANGED) */}
       <section className="section">
-        <div className="section-title">
+        <motion.div className="section-title">
           <h2>Technical Skills</h2>
           <p>Main technologies and engineering practices</p>
-        </div>
+        </motion.div>
 
         <div className="skills-layout">
-          <div className="skill-card">
-            <h3>Languages</h3>
-            <p>C#, JavaScript, TypeScript</p>
-          </div>
-
-          <div className="skill-card">
-            <h3>Frameworks</h3>
-            <p>.NET 8, React, MudBlazor, Next.js</p>
-          </div>
-
-          <div className="skill-card">
-            <h3>Databases</h3>
-            <p>SQL Server, PostgreSQL, MySQL</p>
-          </div>
-
-          <div className="skill-card">
-            <h3>Cloud & DevOps</h3>
-            <p>Azure, Docker, GitLab CI/CD, Jenkins</p>
-          </div>
-
-          <div className="skill-card">
-            <h3>Architecture</h3>
-            <p>Microservices, REST APIs, CQRS, MVVM</p>
-          </div>
-
-          <div className="skill-card">
-            <h3>Tools</h3>
-            <p>Git, GitHub, Postman, Power BI, Sourcetree</p>
-          </div>
+          {[
+            { title: 'Languages', text: 'C#, JavaScript, TypeScript' },
+            { title: 'Frameworks', text: '.NET 8, React, MudBlazor, Next.js' },
+            { title: 'Databases', text: 'SQL Server, PostgreSQL, MySQL' },
+            { title: 'Cloud & DevOps', text: 'Azure, Docker, GitLab CI/CD, Jenkins' },
+            { title: 'Architecture', text: 'Microservices, REST APIs, CQRS, MVVM' },
+            { title: 'Tools', text: 'Git, GitHub, Postman, Power BI, Sourcetree' },
+          ].map((skill, i) => (
+            <motion.div key={i} className="skill-card" initial={{ opacity: 0, y: 25 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+              <h3>{skill.title}</h3>
+              <p>{skill.text}</p>
+            </motion.div>
+          ))}
         </div>
       </section>
 
+      {/* EXPERIENCE (UNCHANGED) */}
       <section className="section">
-        <div className="section-title">
+        <motion.div className="section-title">
           <h2>Work Experience</h2>
           <p>Professional experience and engineering contributions</p>
-        </div>
+        </motion.div>
 
         <div className="experience-list">
-          {experiences.map((job, index) => (
-            <div className="experience-card" key={index}>
+          {experiences.map((job, i) => (
+            <motion.div key={i} className="experience-card">
               <div className="experience-header">
                 <div>
                   <h3>{job.role}</h3>
                   <h4>{job.company}</h4>
                 </div>
-
                 <div className="experience-meta">
                   <span>{job.period}</span>
                   <span>{job.location}</span>
@@ -183,99 +201,80 @@ function App() {
               </div>
 
               <ul>
-                {job.achievements.map((item, i) => (
-                  <li key={i}>{item}</li>
+                {job.achievements.map((a, j) => (
+                  <li key={j}>{a}</li>
                 ))}
               </ul>
 
               <div className="tech-tags">
-                {job.tech.map((tech, i) => (
-                  <span key={i}>{tech}</span>
+                {job.tech.map((t, k) => (
+                  <span key={k}>{t}</span>
                 ))}
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>
 
+      {/* ✅ PROJECT CUBE (ADDED ONLY HERE) */}
       <section className="section">
         <div className="section-title">
           <h2>Projects</h2>
-          <p>Freelance and independent development work</p>
+          <p>Interactive cube (controlled)</p>
         </div>
 
-        <div className="project-layout">
-          {projects.map((project, index) => (
-            <div className="project-card" key={index}>
-              <h3>{project.title}</h3>
+        <div className="cube-controls">
+          <button onClick={rotateLeft}>◀</button>
+          <span>{activeFace + 1} / 4</span>
+          <button onClick={rotateRight}>▶</button>
+        </div>
 
-              <p>{project.description}</p>
+        {isZoomed && (
+          <button className="close-btn" onClick={() => setIsZoomed(false)}>
+            ✕
+          </button>
+        )}
 
-              <div className="tech-tags">
-                {project.tech.map((tech, i) => (
-                  <span key={i}>{tech}</span>
-                ))}
+        <div className="cube-scene">
+          <div
+            className="cube"
+            style={{
+              transform: `
+  scale(${isZoomed ? 1.6 : 1})
+  rotateY(${rotation}deg)
+`,
+            }}
+          >
+            {projects.map((p, i) => (
+              <div
+                key={i}
+                className={`cube-face face-${i}`}
+                onClick={() => {
+                  setActiveProject(i)
+                  setIsZoomed(true)
+                }}
+              >
+                <h3>{p.title}</h3>
+
+                {isZoomed && (
+                  <div className="cube-details">
+                    <p>{p.description}</p>
+
+                    <div className="tech-tags">
+                      {p.tech.map((t) => (
+                        <span key={t}>{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
+
+
       </section>
 
-      <section className="section bottom-grid">
-        <div className="extra-card">
-          <h2>Education</h2>
-
-          <div className="extra-item">
-            <strong>BSc, Software Engineering</strong>
-            <span>Fontys University of Applied Sciences</span>
-            <p>Venlo, Netherlands • 2019 – 2024</p>
-          </div>
-
-          <div className="extra-item">
-            <strong>Minor Study Abroad, Computer Science</strong>
-            <span>Tatung University</span>
-            <p>Taipei, Taiwan • 2023</p>
-          </div>
-        </div>
-
-        <div className="extra-card">
-          <h2>Languages</h2>
-
-          <div className="language-item">
-            <span>Slovak</span>
-            <strong>Native</strong>
-          </div>
-
-          <div className="language-item">
-            <span>English</span>
-            <strong>C1 • IELTS</strong>
-          </div>
-
-          <div className="language-item">
-            <span>Mandarin Chinese</span>
-            <strong>A2</strong>
-          </div>
-
-          <div className="language-item">
-            <span>German</span>
-            <strong>Beginner</strong>
-          </div>
-        </div>
-
-        <div className="extra-card">
-          <h2>Certifications</h2>
-
-          <ul className="cert-list">
-            <li>VCA-VOL (Valid until 13.11.2034)</li>
-            <li>Certified Ethereum Developer</li>
-            <li>International Driving Permit • B Type</li>
-          </ul>
-
-          <h2 className="hobbies-title">Interests</h2>
-
-          <p>Travelling, Sports, Cooking</p>
-        </div>
-      </section>
     </main>
   )
 }

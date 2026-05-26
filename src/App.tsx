@@ -3,6 +3,7 @@ import './App.css'
 
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
+import Cube from './components/Cube'
 
 function App() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
@@ -217,7 +218,7 @@ function App() {
       </section>
 
       {/* ✅ PROJECT CUBE (ADDED ONLY HERE) */}
-      <section className="section">
+      {/* <section className="section">
         <div className="section-title">
           <h2>Projects</h2>
           <p>Interactive cube (controlled)</p>
@@ -273,8 +274,16 @@ function App() {
         </div>
 
 
-      </section>
+      </section> */}
 
+<section className="section cube-section">
+  <div className="section-title">
+    <h2>Projects</h2>
+    <p>Interactive cube</p>
+  </div>
+
+  <Cube />
+</section>
     </main>
   )
 }

@@ -3,8 +3,8 @@
 
 /* ── TOKENS ── */
 :root {
-  --bg:  #1a2540;           /* was #0d1828 — lighter grey-blue */
-  --bg2: #1e2d48;           /* was #111e30 — lighter surface */
+  --bg:  #0d1828;
+  --bg2: #111e30;
 
   /* Glass — water/ice: very transparent white with strong blur */
   --glass-fill:         rgba(255,255,255,0.055);

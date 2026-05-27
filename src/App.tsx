@@ -8,14 +8,6 @@ import Cube from './components/Cube'
 function App() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
 
-  // ✅ CUBE STATE (ADDED ONLY)
-  const [activeProject, setActiveProject] = useState<number | null>(null)
-
-  const [rotation, setRotation] = useState(0)
-  const [activeFace, setActiveFace] = useState(0)
-
-  const [isZoomed, setIsZoomed] = useState(false)
-
   useEffect(() => {
     const mouseMove = (e: globalThis.MouseEvent) => {
       setMousePosition({
@@ -95,39 +87,6 @@ function App() {
       tech: ['React', '.NET 8', 'REST API', 'PostgreSQL'],
     },
   ]
-
-  const projects = [
-    {
-      title: 'QR Ordering System',
-      description: 'Real-time restaurant ordering with QR + SignalR',
-      tech: ['.NET 8', 'React', 'PostgreSQL'],
-    },
-    {
-      title: 'AI HR Platform',
-      description: 'AI recruitment + automated calling system',
-      tech: ['Next.js', '.NET', 'OpenAI'],
-    },
-    {
-      title: 'Bitcoin Lending',
-      description: 'Smart contract lending system on Ethereum',
-      tech: ['Solidity', 'Node.js', 'AWS'],
-    },
-    {
-      title: 'Logistics SaaS',
-      description: 'Multi-tenant shipment tracking platform',
-      tech: ['.NET 8', 'React', 'Azure'],
-    },
-  ]
-
-  const rotateLeft = () => {
-    setRotation((r) => r - 90)
-    setActiveFace((p) => (p + 1) % 4)
-  }
-
-  const rotateRight = () => {
-    setRotation((r) => r + 90)
-    setActiveFace((p) => (p + 3) % 4)
-  }
 
   return (
     <main className="app">

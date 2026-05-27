@@ -1,4 +1,3 @@
-import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useRef } from 'react'
 import React from 'react'
 
@@ -62,8 +61,6 @@ export default function CubeProjects() {
             setActiveFace((p) => (p + 3) % 4)
         }
     }
-
-    const active = projects[activeFace]
 
     return (
         <>

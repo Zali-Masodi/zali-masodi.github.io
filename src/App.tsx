@@ -4,15 +4,15 @@ import "./App.css";
 /* ─────────────────────────────────────────
    DATA
 ───────────────────────────────────────── */
-const NAV_SECTIONS = ["about","skills","experience","projects","education","contact"];
+const NAV_SECTIONS = ["about", "skills", "experience", "projects", "education", "contact"];
 
 const skills = [
-  { cat: "Languages",      name: "Programming",        tags: ["C#", "JavaScript", "TypeScript"] },
-  { cat: "Frameworks",     name: "Frontend & Backend",  tags: [".NET 8", "React", "Next.js", "MudBlazor", "Razor"] },
-  { cat: "Databases",      name: "Data Storage",        tags: ["SQL Server", "PostgreSQL", "MySQL", "MongoDB", "Firestore"] },
-  { cat: "Cloud & DevOps", name: "Infrastructure",      tags: ["Azure", "AWS", "Docker", "GitLab CI/CD", "Jenkins", "Azure DevOps"] },
-  { cat: "Architecture",   name: "Patterns",            tags: ["Microservices", "REST APIs", "CQRS", "MVVM", "Unit Testing", "Agile"] },
-  { cat: "Tools",          name: "Dev Toolchain",       tags: ["Git/GitHub", "Postman", "Power BI", "SignalR", "Entity Framework"] },
+  { cat: "Languages", name: "Programming", tags: ["C#", "JavaScript", "TypeScript"] },
+  { cat: "Frameworks", name: "Frontend & Backend", tags: [".NET 8", "React", "Next.js", "MudBlazor", "Razor"] },
+  { cat: "Databases", name: "Data Storage", tags: ["SQL Server", "PostgreSQL", "MySQL", "MongoDB", "Firestore"] },
+  { cat: "Cloud & DevOps", name: "Infrastructure", tags: ["Azure", "AWS", "Docker", "GitLab CI/CD", "Jenkins", "Azure DevOps"] },
+  { cat: "Architecture", name: "Patterns", tags: ["Microservices", "REST APIs", "CQRS", "MVVM", "Unit Testing", "Agile"] },
+  { cat: "Tools", name: "Dev Toolchain", tags: ["Git/GitHub", "Postman", "Power BI", "SignalR", "Entity Framework"] },
 ];
 
 const experience = [
@@ -23,82 +23,91 @@ const experience = [
     period: "08/2025 – 04/2026",
     location: "Vienna, Austria",
     bullets: [
-      "Developed and extended a .NET-based logistics platform with automated email notifications, REST APIs, and webhook integrations.",
-      "Enhanced Android delivery application with parcel redirection and real-time customer feedback features.",
-      "Designed shipment tracking pages across multiple business units supporting scalable multi-tenant architecture.",
-      "Integrated Mollie, invoicing, and cash-on-delivery payment methods to improve checkout flexibility.",
-      "Implemented real-time customer communication within tracking pages, reducing email/phone support by ~90%.",
-      "Built package scanning and return workflows, reducing manual processing overhead.",
+      "Developed and extended a .NET-based logistics platform, adding automated email notifications, REST APIs, and webhook integrations",
+      "Enhanced Android delivery application with parcel redirection and real-time customer feedback features",
+      "Designed and implemented shipment tracking pages across multiple business units, supporting scalable multi-tenant architecture",
+      "Integrated multiple payment methods (Mollie, cash on delivery, invoicing), improving checkout flexibility",
+      "Built package scanning and return workflows, reducing manual processing",
+      "Implemented real-time customer comments functionality within shipment tracking pages, enabling direct communication and reducing the need for email and phone support by nearly 90%",
     ],
     tech: [".NET 8", "React", "SQL Server", "MySQL", "Android"],
     reference: { label: "📄 Download Reference Letter", file: "/Zeugnis_Ramon.pdf" },
   },
   {
     id: "actemium",
-    title: "Medior Full-Stack Developer",
+    title: "Full-Stack Developer",
     company: "Actemium",
     period: "10/2024 – 08/2025",
     location: "Herten, Netherlands",
     bullets: [
-      "Developed and maintained MES systems with TrakSYS frontend and .NET microservices backend.",
-      "Implemented RESTful APIs in .NET for real-time communication between MES modules and SQL databases.",
-      "Built automated unit tests to validate core business logic and ensure maintainability.",
-      "Integrated Power BI dashboards with MES data streams for real-time reporting.",
+      "Developed and maintained manufacturing execution systems (MES) with a TrakSYS frontend and .NET microservices backend, improving data visibility across production lines",
+      "Implemented RESTful APIs in .NET for real-time communication between MES modules and SQL databases (SQL Server/MySQL)",
+      "Built automated unit tests to validate core business logic and ensure maintainability",
+      "Integrated Power BI dashboards with MES data streams, providing real-time reporting for project managers and production supervisors",
+      "Supported production environments during system updates and malfunctions, reducing downtime"
     ],
-    tech: [".NET 8", "TrakSYS", "Azure", "Power BI", "SQL Server", "MySQL"],
+    tech: [".NET 8", "TrakSYS", "Microsoft Azure", "Power BI", "SQL Server", "MySQL"],
   },
   {
     id: "shipcloud",
-    title: "Medior Full-Stack Developer",
+    title: "Full-Stack Developer",
     company: "Shipcloud GmbH",
     period: "09/2023 – 06/2024",
     location: "Venlo, Netherlands",
     bullets: [
-      "Designed and deployed scalable carrier integration solutions with .NET backend and Razor frontend.",
-      "Implemented event-driven microservices for processing shipping orders and booking requests.",
-      "Built dashboards for monitoring carrier integrations with real-time order flow visibility.",
-      "Streamlined API integrations with logistics partners, reducing onboarding time for new carriers.",
+      "Designed and deployed scalable carrier integration solutions with .NETbackend and a Razor frontend, improving maintainability and system performance",
+      "Implemented event-driven microservices in .NET for processing shipping orders and booking requests, reducing latency and manual intervention",
+      "Built dashboards for monitoring carrier integrations, providing real-time visibility into order flows and errors",
+      "Automated testing and integration pipelines for microservices, ensuring reliable deployments",
+      "Streamlined API integrations with logistics partners, reducing onboarding time for new carriers"
     ],
     tech: [".NET", "Razor", "PostgreSQL", "GitLab CI/CD", "Postman"],
   },
-  {
-    id: "actief",
-    title: "Junior Full-Stack Developer",
-    company: "Actief Werkt",
-    period: "03/2023 – 08/2023",
-    location: "Remote",
-    bullets: [
-      "Designed and developed a full-stack employee management system for attendance and shift data tracking.",
-      "Built React frontend for real-time dashboards with attendance logs and production KPIs.",
-      "Implemented secure REST API backend (.NET 8) with optimised PostgreSQL schemas.",
-    ],
-    tech: ["React", ".NET 8", "REST API", "PostgreSQL", "Azure DevOps"],
-  },
+  // {
+  //   id: "actief",
+  //   title: "Junior Full-Stack Developer",
+  //   company: "Actief Werkt",
+  //   period: "03/2023 – 08/2023",
+  //   location: "Remote",
+  //   bullets: [
+  //     "Designed and developed a full-stack employee management system for attendance and shift data tracking.",
+  //     "Built React frontend for real-time dashboards with attendance logs and production KPIs.",
+  //     "Implemented secure REST API backend (.NET 8) with optimised PostgreSQL schemas.",
+  //   ],
+  //   tech: ["React", ".NET 8", "REST API", "PostgreSQL", "Azure DevOps"],
+  // },
   {
     id: "canon",
-    title: "Junior DevOps Engineer",
+    title: "DevOps Engineer",
     company: "Canon Production Printing",
     period: "09/2022 – 02/2023",
     location: "Venlo, Netherlands",
     bullets: [
-      "Managed Identity and Access Management in Azure DevOps, ensuring secure team collaboration.",
-      "Developed Power BI data visualisations for security permission reporting.",
-      "Automated transformations with Power Query, streamlining workflows.",
+      "Design and development of a security permissions reporting platform for Azure DevOps Server",
+      "Reverse engineering of Azure DevOps Server API calls to extract and aggregate security and access control data",
+      "Collection and consolidation of user and permission information from Active Directory and Azure DevOps environments",
+      "Development of centralized dashboards with advanced filtering and search capabilities for security auditing and access reviews",
+      "Creation of Power BI reports and automated data transformation pipelines using Power Query",
+      "End-to-end project ownership, including requirements analysis, technology stack selection, architecture design, implementation, testing, and documentation"
     ],
-    tech: ["Azure DevOps", "Power BI", "Power Query"],
+    tech: ["Azure DevOps", "Power BI", "Power Query", "Active Directory", "Browser DevTools"],
   },
   {
     id: "fiserv",
-    title: "Junior DevOps Engineer",
+    title: "DevOps Engineer",
     company: "Fiserv Inc.",
     period: "06/2021 – 09/2022",
     location: "Slovakia · Remote, Part-time",
     bullets: [
-      "Deployed applications to AWS and managed Docker containers.",
-      "Built and maintained CI/CD pipelines using Jenkins and GitLab.",
-      "Supported frontend development with React and backend scripts in JavaScript/Bash.",
+      "Application deployment and environment management in AWS",
+      "Container deployment and administration using Docker",
+      "Configuration and maintenance of CI/CD pipelines with Jenkins and GitLab",
+      "Creation and modification of deployment and configuration files",
+      "Development and maintenance of automation scripts using Bash and JavaScript",
+      "Support of frontend development activities using React",
+
     ],
-    tech: ["AWS", "Docker", "Jenkins", "GitLab", "React", "Bash"],
+    tech: ["AWS", "Docker", "Jenkins", "GitLab", "WSL2", "YAML", "React"],
   },
 ];
 
@@ -139,19 +148,25 @@ const education = [
 ];
 
 const languages = [
-  { name: "Slovak",           level: "Mother tongue",              pct: 100 },
-  { name: "English",          level: "C1 · IELTS Certificate",     pct: 90 },
+  { name: "Slovak", level: "Mother tongue", pct: 100 },
+  { name: "English", level: "C1 · IELTS Certificate", pct: 90 },
   { name: "Mandarin Chinese", level: "A2 · Tatung Univ. (96/100)", pct: 30 },
-  { name: "German",           level: "Beginner · In Progress",     pct: 15 },
+  { name: "German", level: "Beginner · In Progress", pct: 15 },
 ];
 
 const certs = [
-  "🔷 Certified Ethereum Developer",
-  "🛡 VCA-VOL (valid until Nov 2034)",
-  "🚗 International Driving Permit – Type B",
-  "✈️ Travelling",
-  "⚽ Sports",
-  "🍳 Cooking",
+  {
+    label: "🔷 Certified Ethereum Developer",
+    url: "https://certificates.blockchain-council.org/12f0d8e5-dd9b-4507-8898-23f363ae8c01#acc.xKLiFunV"
+  },
+  {
+    label: "🛡 VOL-VCA",
+    url: "/certs/VOL-VCA.pdf"
+  },
+  {
+    label: "🚗 International Driving Permit – Type B",
+    url: "#"
+  }
 ];
 
 /* ─────────────────────────────────────────
@@ -166,7 +181,7 @@ export default function App() {
     const move = (e: MouseEvent) => {
       if (cursorRef.current) {
         cursorRef.current.style.left = e.clientX + "px";
-        cursorRef.current.style.top  = e.clientY + "px";
+        cursorRef.current.style.top = e.clientY + "px";
       }
     };
     window.addEventListener("mousemove", move);
@@ -244,8 +259,8 @@ export default function App() {
     cards.forEach((card) => {
       const onMove = (e: MouseEvent) => {
         const r = card.getBoundingClientRect();
-        const x = (e.clientX - r.left) / r.width  - 0.5;
-        const y = (e.clientY - r.top)  / r.height - 0.5;
+        const x = (e.clientX - r.left) / r.width - 0.5;
+        const y = (e.clientY - r.top) / r.height - 0.5;
         card.style.transform = `translateY(-4px) perspective(700px) rotateX(${-y * 5}deg) rotateY(${x * 5}deg)`;
       };
       const onLeave = () => { card.style.transform = ""; };
@@ -298,13 +313,13 @@ export default function App() {
             systems. Strong focus on clean architecture, performance, and systems that matter.
           </p>
           <div className="hero-contact">
-            <a href="tel:+421949490488"           className="c-pill">📞 +421 949 490 488</a>
+            <a href="tel:+421949490488" className="c-pill">📞 +421 949 490 488</a>
             <a href="mailto:zalimasodi@gmail.com" className="c-pill">✉ zalimasodi@gmail.com</a>
             <span className="c-pill">📍 Slovakia · Remote</span>
           </div>
           <div className="hero-cta">
             <a href="#experience" className="btn-primary">View Experience</a>
-            <a href="#contact"    className="btn-ghost">Get in Touch</a>
+            <a href="#contact" className="btn-ghost">Get in Touch</a>
           </div>
         </div>
       </section>
@@ -313,9 +328,9 @@ export default function App() {
       <div className="container">
         <div className="stats-bar reveal">
           {[
-            { num: "3+",  label: "Years of Experience" },
-            { num: "6",   label: "Companies" },
-            { num: "5+",  label: "Personal Projects" },
+            { num: "3+", label: "Years of Experience" },
+            { num: "6", label: "Companies" },
+            { num: "5+", label: "Personal Projects" },
             { num: "90%", label: "Support Reduction @ Veloce" },
           ].map((s) => (
             <div className="stat-pane" key={s.label}>
@@ -388,7 +403,7 @@ export default function App() {
                 <div className="proj-year">{p.year}</div>
                 <div className="proj-title">{p.title}</div>
                 <div className="proj-desc">{p.desc}</div>
-                <ul className="exp-list" style={{marginBottom: 14}}>{p.bullets.map((b) => <li key={b}>{b}</li>)}</ul>
+                <ul className="exp-list" style={{ marginBottom: 14 }}>{p.bullets.map((b) => <li key={b}>{b}</li>)}</ul>
                 <div className="tech-tags">{p.tech.map((t) => <span className="tech-tag" key={t}>{t}</span>)}</div>
               </div>
             ))}
@@ -423,13 +438,13 @@ export default function App() {
         <div className="container">
           <div className="section-eyebrow reveal">Communication</div>
           <h2 className="section-title reveal d1">Languages</h2>
-          <div className="lang-grid" style={{marginBottom: 56}}>
+          <div className="lang-grid" style={{ marginBottom: 56 }}>
             {languages.map((l, i) => (
               <div className={`lang-card glass reveal d${i + 1}`} key={l.name}>
                 <div className="lang-name">{l.name}</div>
                 <div className="lang-level">{l.level}</div>
                 <div className="lang-bar">
-                  <div className="lang-fill" data-width={`${l.pct}%`} style={{width: 0}} />
+                  <div className="lang-fill" data-width={`${l.pct}%`} style={{ width: 0 }} />
                 </div>
               </div>
             ))}
@@ -437,7 +452,23 @@ export default function App() {
 
           <div className="section-eyebrow reveal">Certifications &amp; More</div>
           <div className="certs-row reveal d1">
-            {certs.map((c) => <span className="cert-pill" key={c}>{c}</span>)}
+            {certs.map((c) =>
+              c.url && c.url !== "#" ? (
+                <a
+                  key={c.label}
+                  href={c.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="cert-pill cert-link"
+                >
+                  {c.label}
+                </a>
+              ) : (
+                <span key={c.label} className="cert-pill cert-disabled">
+                  {c.label}
+                </span>
+              )
+            )}
           </div>
         </div>
       </section>
@@ -454,7 +485,7 @@ export default function App() {
             </p>
             <div className="contact-btns">
               <a href="mailto:zalimasodi@gmail.com" className="btn-primary">✉ zalimasodi@gmail.com</a>
-              <a href="tel:+421949490488"           className="btn-ghost">📞 +421 949 490 488</a>
+              <a href="tel:+421949490488" className="btn-ghost">📞 +421 949 490 488</a>
             </div>
           </div>
         </div>

@@ -329,7 +329,7 @@ export default function App() {
         <div className="stats-bar reveal">
           {[
             { num: "3+", label: "Years of Experience" },
-            { num: "6", label: "Companies" },
+            { num: "5", label: "Companies" },
             { num: "5+", label: "Personal Projects" },
             { num: "90%", label: "Support Reduction @ Veloce" },
           ].map((s) => (

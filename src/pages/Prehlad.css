@@ -1,0 +1,137 @@
+.links-page {
+  --ink: #12151c;
+  --paper: #edeae3;
+  --paper-dim: #b8b4ab;
+  --amber: #e8a33d;
+  --rule: rgba(237, 234, 227, 0.14);
+
+  min-height: 100vh;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: "Iowan Old Style", "Georgia", serif;
+  padding: 6rem 1.5rem 4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.links-header {
+  width: 100%;
+  max-width: 640px;
+  margin-bottom: 3rem;
+}
+
+.links-eyebrow {
+  display: block;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 0.75rem;
+}
+
+.links-title {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.links-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 640px;
+  border-top: 1px solid var(--rule);
+}
+
+.links-item {
+  border-bottom: 1px solid var(--rule);
+}
+
+.links-anchor {
+  display: flex;
+  align-items: baseline;
+  gap: 1.25rem;
+  padding: 1.4rem 0.25rem;
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+  transition: padding-left 0.25s ease, color 0.25s ease;
+}
+
+.links-anchor:hover,
+.links-anchor:focus-visible {
+  padding-left: 0.75rem;
+  color: var(--amber);
+}
+
+.links-anchor:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 4px;
+}
+
+.links-index {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.85rem;
+  color: var(--paper-dim);
+  min-width: 1.75rem;
+  transition: color 0.25s ease;
+}
+
+.links-anchor:hover .links-index,
+.links-anchor:focus-visible .links-index {
+  color: var(--amber);
+}
+
+.links-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.links-label {
+  font-size: 1.15rem;
+}
+
+.links-description {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.8rem;
+  color: var(--paper-dim);
+  margin-top: 0.2rem;
+}
+
+.links-arrow {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 1rem;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.links-anchor:hover .links-arrow,
+.links-anchor:focus-visible .links-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@media (max-width: 480px) {
+  .links-page {
+    padding: 4rem 1.25rem 3rem;
+  }
+
+  .links-description {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .links-anchor,
+  .links-index,
+  .links-arrow {
+    transition: none;
+  }
+}

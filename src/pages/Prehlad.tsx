@@ -9,7 +9,8 @@ interface LinkItem {
 
 const LINKS: LinkItem[] = [
   { label: "Pekaren", href: "/pekaren", description: "Stranka pre pekaren"},
-  { label: "Dodavka", href: "/dodavka", description: "Stranka pre dodavku"}
+  { label: "Dodavka", href: "/dodavka", description: "Stranka pre dodavku"},
+  { label: "Stavba", href: "/stavba", description: "Stranka pre stavbu"}
 ];
 
 export default function LinksPage() {

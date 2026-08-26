@@ -704,33 +704,35 @@ export default function Stavba() {
       {/* ============ HERO ============ */}
       <section className="sb-hero" id="hero">
         <div className="sb-hero__sweep" aria-hidden="true" />
-        <div className="container sb-hero__inner">
-          <div className="eyebrow">{t.hero.eyebrow}</div>
-          <h1 className="sb-hero__title">
-            {t.hero.titleA} <em>{t.hero.titleHighlight}</em>
-          </h1>
-          <p className="sb-hero__subtitle">{t.hero.subtitle}</p>
+        <div className="container">
+          <div className="sb-hero__inner">
+            <div className="eyebrow">{t.hero.eyebrow}</div>
+            <h1 className="sb-hero__title">
+              {t.hero.titleA} <em>{t.hero.titleHighlight}</em>
+            </h1>
+            <p className="sb-hero__subtitle">{t.hero.subtitle}</p>
 
-          <div className="sb-hero__ctas">
-            <a href="#kontakt" className="btn btn-primary is-pulsing" onClick={handleNavClick('kontakt')}>
-              {t.hero.ctaPrimary}
-              <Icon name="arrow-right" size={18} />
-            </a>
-            <a href="#galeria" className="btn btn-outline" onClick={handleNavClick('galeria')}>
-              {t.hero.ctaSecondary}
-            </a>
-          </div>
+            <div className="sb-hero__ctas">
+              <a href="#kontakt" className="btn btn-primary is-pulsing" onClick={handleNavClick('kontakt')}>
+                {t.hero.ctaPrimary}
+                <Icon name="arrow-right" size={18} />
+              </a>
+              <a href="#galeria" className="btn btn-outline" onClick={handleNavClick('galeria')}>
+                {t.hero.ctaSecondary}
+              </a>
+            </div>
 
-          <div className="sb-hero__points">
-            {t.hero.points.map((p, i) => (
-              <Reveal key={i} className="sb-point">
-                <span className="sb-point__icon"><Icon name={p.icon} /></span>
-                <div>
-                  <div className="sb-point__title">{p.title}</div>
-                  <p className="sb-point__text">{p.text}</p>
-                </div>
-              </Reveal>
-            ))}
+            <div className="sb-hero__points">
+              {t.hero.points.map((p, i) => (
+                <Reveal key={i} className="sb-point">
+                  <span className="sb-point__icon"><Icon name={p.icon} /></span>
+                  <div>
+                    <div className="sb-point__title">{p.title}</div>
+                    <p className="sb-point__text">{p.text}</p>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -823,21 +825,23 @@ export default function Stavba() {
 
       {/* ============ CONTACT BANNER ============ */}
       <section className="sb-banner">
-        <div className="container sb-banner__inner">
-          <div className="sb-banner__row">
-            <div>
-              <h2 className="sb-banner__title">{t.banner.title}</h2>
-              <p style={{ marginTop: 10, opacity: 0.92 }}>{t.banner.subtitle}</p>
+        <div className="container">
+          <div className="sb-banner__inner">
+            <div className="sb-banner__row">
+              <div>
+                <h2 className="sb-banner__title">{t.banner.title}</h2>
+                <p style={{ marginTop: 10, opacity: 0.92 }}>{t.banner.subtitle}</p>
+              </div>
+              <a className="sb-banner__phone" href={COMPANY.phoneHref}>
+                <Icon name="phone" size={22} />
+                {COMPANY.phone}
+              </a>
             </div>
-            <a className="sb-banner__phone" href={COMPANY.phoneHref}>
-              <Icon name="phone" size={22} />
-              {COMPANY.phone}
+            <a href="#kontakt" className="btn btn-dark" onClick={handleNavClick('kontakt')}>
+              {t.banner.cta}
+              <Icon name="arrow-right" size={18} />
             </a>
           </div>
-          <a href="#kontakt" className="btn btn-dark" onClick={handleNavClick('kontakt')}>
-            {t.banner.cta}
-            <Icon name="arrow-right" size={18} />
-          </a>
         </div>
       </section>
 
@@ -952,53 +956,57 @@ export default function Stavba() {
       {/* ============ FOOTER ============ */}
       <footer className="sb-footer">
         <div className="hazard-stripe" aria-hidden="true" />
-        <div className="container sb-footer__top">
-          <div className="sb-footer__brand">
-            <div className="sb-logo">
-              <span className="sb-logo__mark"><Icon name="house" size={18} /></span>
-              <span className="sb-logo__text">{COMPANY.name} <span>{COMPANY.suffix}</span></span>
+        <div className="container">
+          <div className="sb-footer__top">
+            <div className="sb-footer__brand">
+              <div className="sb-logo">
+                <span className="sb-logo__mark"><Icon name="house" size={18} /></span>
+                <span className="sb-logo__text">{COMPANY.name} <span>{COMPANY.suffix}</span></span>
+              </div>
+              <p>{t.footer.tagline}</p>
             </div>
-            <p>{t.footer.tagline}</p>
-          </div>
 
-          <div className="sb-footer__col">
-            <h4>{t.footer.navTitle}</h4>
-            <ul>
-              {navItems.map((item) => (
-                <li key={item.id}>
-                  <a href={`#${item.id}`} onClick={handleNavClick(item.id)}>{item.label}</a>
-                </li>
-              ))}
-            </ul>
-          </div>
+            <div className="sb-footer__col">
+              <h4>{t.footer.navTitle}</h4>
+              <ul>
+                {navItems.map((item) => (
+                  <li key={item.id}>
+                    <a href={`#${item.id}`} onClick={handleNavClick(item.id)}>{item.label}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          <div className="sb-footer__col">
-            <h4>{t.footer.servicesTitle}</h4>
-            <ul>
-              {t.services.items.slice(0, 5).map((s, i) => (
-                <li key={i}><a href="#sluzby" onClick={handleNavClick('sluzby')}>{s.title}</a></li>
-              ))}
-            </ul>
-          </div>
+            <div className="sb-footer__col">
+              <h4>{t.footer.servicesTitle}</h4>
+              <ul>
+                {t.services.items.slice(0, 5).map((s, i) => (
+                  <li key={i}><a href="#sluzby" onClick={handleNavClick('sluzby')}>{s.title}</a></li>
+                ))}
+              </ul>
+            </div>
 
-          <div className="sb-footer__col">
-            <h4>{t.footer.contactTitle}</h4>
-            <ul>
-              <li><a href={COMPANY.phoneHref}>{COMPANY.phone}</a></li>
-              <li><a href={COMPANY.emailHref}>{COMPANY.email}</a></li>
-              <li><span>{t.contact.address}</span></li>
-            </ul>
-            <div className="sb-social" style={{ marginTop: 14 }}>
-              <a href={COMPANY.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook"><Icon name="facebook" size={18} /></a>
-              <a href={COMPANY.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram"><Icon name="instagram" size={18} /></a>
+            <div className="sb-footer__col">
+              <h4>{t.footer.contactTitle}</h4>
+              <ul>
+                <li><a href={COMPANY.phoneHref}>{COMPANY.phone}</a></li>
+                <li><a href={COMPANY.emailHref}>{COMPANY.email}</a></li>
+                <li><span>{t.contact.address}</span></li>
+              </ul>
+              <div className="sb-social" style={{ marginTop: 14 }}>
+                <a href={COMPANY.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook"><Icon name="facebook" size={18} /></a>
+                <a href={COMPANY.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram"><Icon name="instagram" size={18} /></a>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="container sb-footer__bottom">
-          <div className="sb-footer__bottom-row">
-            <span>© {new Date().getFullYear()} {COMPANY.name} {COMPANY.suffix}. {t.footer.rights}</span>
-            <span>SK / EN</span>
+        <div className="container">
+          <div className="sb-footer__bottom">
+            <div className="sb-footer__bottom-row">
+              <span>© {new Date().getFullYear()} {COMPANY.name} {COMPANY.suffix}. {t.footer.rights}</span>
+              <span>SK / EN</span>
+            </div>
           </div>
         </div>
       </footer>

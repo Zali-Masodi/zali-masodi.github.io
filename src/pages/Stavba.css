@@ -406,7 +406,7 @@ input, textarea { font-family: inherit; }
   55% { left: 120%; }
   100% { left: 120%; }
 }
-.sb-hero__inner { position: relative; z-index: 2; padding: 48px 0 40px; }
+.sb-hero__inner { position: relative; z-index: 2; padding-top: 48px; padding-bottom: 40px; }
 .sb-hero__title {
   font-size: clamp(2.1rem, 7vw, 3.6rem);
   text-transform: uppercase;
@@ -600,7 +600,8 @@ input, textarea { font-family: inherit; }
   50% { background-position: 100% 50%; }
 }
 .sb-banner__inner {
-  padding: 44px 0;
+  padding-top: 44px;
+  padding-bottom: 44px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -717,7 +718,7 @@ input, textarea { font-family: inherit; }
    FOOTER
    ========================================================= */
 .sb-footer { background: var(--bg-strong); color: var(--text-muted-on-strong); transition: background 0.3s ease; }
-.sb-footer__top { padding: 88px 0 36px; display: grid; grid-template-columns: 1fr; gap: 32px; }
+.sb-footer__top { padding-top: 88px; padding-bottom: 36px; display: grid; grid-template-columns: 1fr; gap: 32px; }
 .sb-footer__brand p { margin-top: 14px; font-size: 0.9rem; color: var(--text-muted-on-strong); line-height: 1.6; max-width: 34ch; }
 .sb-footer__col h4 {
   font-family: var(--font-display);
@@ -732,7 +733,8 @@ input, textarea { font-family: inherit; }
 .sb-footer__col a:hover { color: var(--c-orange); }
 .sb-footer__bottom {
   border-top: 1px solid var(--line-on-strong);
-  padding: 24px 0 32px;
+  padding-top: 24px;
+  padding-bottom: 32px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -741,10 +743,8 @@ input, textarea { font-family: inherit; }
 }
 .sb-footer__bottom-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; align-items: center; }
 
-/* Extra breathing room on the sides of the footer specifically —
-   slightly more than the site-wide .container so copy never sits
-   flush against the viewport edge. */
-.sb-footer .container { padding-left: 36px; padding-right: 36px; }
+/* Footer now uses the site-wide .container padding, same as every
+   other section, so side gaps are consistent across the page. */
 
 /* back to top */
 .sb-to-top {
@@ -769,12 +769,10 @@ input, textarea { font-family: inherit; }
    ========================================================= */
 @media (max-width: 380px) {
   .container { padding: 0 40px; }
-  .sb-footer .container { padding-left: 44px; padding-right: 44px; }
 }
 
 @media (min-width: 640px) {
   .container { padding: 0 36px; }
-  .sb-footer .container { padding-left: 40px; padding-right: 40px; }
   .sb-hero__ctas { flex-direction: row; }
   .sb-hero__points { grid-template-columns: repeat(2, 1fr); }
   .sb-services__grid { grid-template-columns: repeat(2, 1fr); }
@@ -794,7 +792,6 @@ input, textarea { font-family: inherit; }
   .sb-burger { display: none; }
   .sb-header__phone { display: flex; }
   .container { padding: 0 40px; }
-  .sb-footer .container { padding-left: 48px; padding-right: 48px; }
   .sb-footer__top { padding-top: 100px; }
   .sb-hero__points { grid-template-columns: repeat(3, 1fr); }
   .sb-services__grid { grid-template-columns: repeat(4, 1fr); }

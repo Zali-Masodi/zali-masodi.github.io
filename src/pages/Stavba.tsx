@@ -57,10 +57,10 @@ interface Content {
 const COMPANY = {
   name: 'PrerobTo',
   suffix: 'Rekonštrukcie',
-  phone: '+421 900 123 456',
-  phoneHref: 'tel:+421900123456',
-  email: 'prerobto@prerobto.com',
-  emailHref: 'mailto: prerobto@prerobto.com',
+  phone: '+421 903 827 652',
+  phoneHref: 'tel:+421903827652',
+  email: 'milanvorzak59@gmail.com',
+  emailHref: 'mailto: milanvorzak59@gmail.com',
   facebook: 'https://www.facebook.com/',
   instagram: 'https://www.instagram.com/',
   mapEmbedSrc: 'https://www.google.com/maps?q=Bratislava,Slovensko&output=embed',
@@ -363,7 +363,7 @@ const content: Record<Lang, Content> = {
       labelPhone: 'Telefón',
       labelMessage: 'Správa',
       placeholderName: 'Váš email',
-      placeholderEmail: 'prerobto@prerobto.com',
+      placeholderEmail: 'email@gmail.com',
       placeholderPhone: '+421 900 000 000',
       placeholderMessage: 'Opíšte nám váš projekt...',
       submit: 'Odoslať dopyt',
@@ -375,7 +375,7 @@ const content: Record<Lang, Content> = {
       emailLabel: 'E-mail',
       addressLabel: 'Adresa',
       hoursLabel: 'Pracovná doba',
-      address: 'Stavebná 12, 831 04 Bratislava',
+      address: 'Ambroseho6, 851 02 Bratislava Petržalka',
       hours: 'Po – Pia: 7:00 – 17:00',
       mapTitle: 'Kde nás nájdete',
     },
@@ -794,8 +794,8 @@ export default function Stavba() {
         <div className="container">
           <Reveal className="section-head">
             <div className="eyebrow">{t.reviews.eyebrow}</div>
-            <h2 className="section-title section-title--light">{t.reviews.title}</h2>
-            <p className="section-subtitle section-subtitle--light">{t.reviews.subtitle}</p>
+            <h2 className="section-title">{t.reviews.title}</h2>
+            <p className="section-subtitle">{t.reviews.subtitle}</p>
           </Reveal>
 
           <div className="sb-reviews__grid">

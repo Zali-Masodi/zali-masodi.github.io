@@ -4,11 +4,9 @@
    safety orange / warm white. Signature motif: hazard-tape
    stripe dividers + blueprint-grid hero with a light sweep.
 
-   Single fixed dark palette — theme switching has been removed.
-   Colors are theme-invariant constants plus a semantic token
-   layer defined once on :root (--bg-strong, --text-soft,
-   --line-on-soft, ...), so components still reference semantic
-   names rather than raw colors.
+   Single fixed dark palette. Colors are theme-invariant
+   constants plus a semantic token layer defined once on
+   :root (--bg-strong, --text-soft, --line-on-soft, ...).
    ========================================================= */
 
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
@@ -28,7 +26,6 @@
   --radius-m: 10px;
   --header-h: 64px;
 
-  /* single fixed (dark) palette — theme switching removed */
   color-scheme: dark;
 
   --bg-strong: #16140f;           /* header, hero, mobile menu, reviews, footer */
@@ -75,10 +72,6 @@ html { scroll-behavior: smooth; }
 body {
   margin: 0;
   font-family: var(--font-body);
-  /* Fallbacks kept defensively: --text-soft / --bg-soft are defined
-     on :root, but body sits above .sb-root in the DOM. A fallback
-     avoids any flash of unstyled color on overscroll bounce or if
-     page content is shorter than the viewport. */
   color: var(--text-soft, #f2efe9);
   background: var(--bg-soft, #1c1a15);
   -webkit-font-smoothing: antialiased;
@@ -95,7 +88,6 @@ input, textarea { font-family: inherit; }
   overflow-x: hidden;
   background: var(--bg-soft);
   color: var(--text-soft);
-  transition: background 0.3s ease, color 0.3s ease;
 }
 
 .container {
@@ -127,10 +119,8 @@ input, textarea { font-family: inherit; }
 }
 
 .section-head { max-width: 640px; margin-bottom: 36px; }
-.section-title { font-size: clamp(1.7rem, 4.5vw, 2.5rem); text-transform: uppercase; letter-spacing: 0.01em; }
-.section-title--light { color: var(--text-strong); }
+.section-title { font-size: clamp(1.7rem, 4.5vw, 2.5rem); text-transform: uppercase; letter-spacing: 0.01em; color: var(--c-orange); }
 .section-subtitle { margin-top: 14px; color: var(--text-soft-muted); font-size: 1rem; line-height: 1.6; }
-.section-subtitle--light { color: var(--text-muted-on-strong); }
 
 .section { padding: 64px 0; position: relative; }
 
@@ -366,7 +356,6 @@ input, textarea { font-family: inherit; }
   background: linear-gradient(180deg, var(--bg-strong-grad-top) 0%, var(--bg-strong) 60%);
   overflow: hidden;
   color: var(--text-strong);
-  transition: background 0.3s ease, color 0.3s ease;
 }
 .sb-hero::before {
   /* blueprint grid */
@@ -458,7 +447,7 @@ input, textarea { font-family: inherit; }
 /* =========================================================
    SERVICES
    ========================================================= */
-.sb-services { background: var(--bg-soft-alt); transition: background 0.3s ease; }
+.sb-services { background: var(--bg-soft-alt); }
 .sb-services__grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -471,7 +460,7 @@ input, textarea { font-family: inherit; }
   border-radius: var(--radius-m);
   padding: 26px 22px;
   overflow: hidden;
-  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.3s ease, border-color 0.3s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 .sb-service-card::before {
   content: '';
@@ -496,7 +485,7 @@ input, textarea { font-family: inherit; }
 /* =========================================================
    GALLERY
    ========================================================= */
-.sb-gallery { background: var(--bg-soft); transition: background 0.3s ease; }
+.sb-gallery { background: var(--bg-soft); }
 .sb-gallery__grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -535,7 +524,7 @@ input, textarea { font-family: inherit; }
 /* =========================================================
    REVIEWS
    ========================================================= */
-.sb-reviews { background: var(--bg-strong); transition: background 0.3s ease; }
+.sb-reviews { background: var(--bg-strong); }
 .sb-reviews__grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -547,7 +536,6 @@ input, textarea { font-family: inherit; }
   border-left: 4px solid var(--c-orange);
   border-radius: var(--radius-m);
   padding: 22px;
-  transition: background 0.3s ease, border-color 0.3s ease;
 }
 .sb-review__photos {
   display: flex;
@@ -584,8 +572,7 @@ input, textarea { font-family: inherit; }
 
 /* =========================================================
    CONTACT BANNER
-   (Kept theme-constant on purpose — a vivid orange brand block,
-   not a page surface, so it stays the same in both modes.)
+   (A vivid orange brand block, not a page surface.)
    ========================================================= */
 .sb-banner {
   position: relative;
@@ -618,7 +605,7 @@ input, textarea { font-family: inherit; }
 /* =========================================================
    CONTACT
    ========================================================= */
-.sb-contact { background: var(--bg-soft-alt); transition: background 0.3s ease; }
+.sb-contact { background: var(--bg-soft-alt); }
 .sb-contact__grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -640,7 +627,7 @@ input, textarea { font-family: inherit; }
   padding: 12px 14px;
   font-size: 0.95rem;
   color: var(--text-soft);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .sb-field input:focus, .sb-field textarea:focus {
   outline: none;
@@ -662,9 +649,9 @@ input, textarea { font-family: inherit; }
 .sb-contact-info { display: flex; flex-direction: column; gap: 26px; }
 
 /* Always dark by design — a fixed brand color-block sitting on
-   whichever page surface is active, echoing the black CTA button.
-   Locally re-pins the shared tokens so children (chips, dividers)
-   render consistently dark regardless of the active theme. */
+   the page surface, echoing the black CTA button. Locally
+   re-pins the shared tokens so children (chips, dividers)
+   render consistently dark. */
 .sb-contact-info__card {
   background: var(--c-black);
   color: var(--c-white);
@@ -717,7 +704,7 @@ input, textarea { font-family: inherit; }
 /* =========================================================
    FOOTER
    ========================================================= */
-.sb-footer { background: var(--bg-strong); color: var(--text-muted-on-strong); transition: background 0.3s ease; }
+.sb-footer { background: var(--bg-strong); color: var(--text-muted-on-strong); }
 .sb-footer__top { padding-top: 88px; padding-bottom: 36px; display: grid; grid-template-columns: 1fr; gap: 32px; }
 .sb-footer__brand p { margin-top: 14px; font-size: 0.9rem; color: var(--text-muted-on-strong); line-height: 1.6; max-width: 34ch; }
 .sb-footer__col h4 {
@@ -742,9 +729,6 @@ input, textarea { font-family: inherit; }
   color: var(--text-muted-on-strong);
 }
 .sb-footer__bottom-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; align-items: center; }
-
-/* Footer now uses the site-wide .container padding, same as every
-   other section, so side gaps are consistent across the page. */
 
 /* back to top */
 .sb-to-top {

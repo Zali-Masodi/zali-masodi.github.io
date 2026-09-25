@@ -503,6 +503,9 @@ function Hero({ t }: { t: Content }) {
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] });
   const gridY = useTransform(scrollYProgress, [0, 1], ['0%', '18%']);
   const typeY = useTransform(scrollYProgress, [0, 1], ['0%', '-12%']);
+  const photoY = useTransform(scrollYProgress, [0, 1], ['0%', '14%']);
+  const [photoFailed, setPhotoFailed] = useState(false);
+  const hasPhoto = Boolean(PHOTOS.hero) && !photoFailed;
 
   const line = (text: string, delay: number, className = '') => (
     <span className="sb-hero__mask">
@@ -518,11 +521,19 @@ function Hero({ t }: { t: Content }) {
   );
 
   return (
-    <section className="sb-hero" id="hero" ref={ref}>
+    <section className={`sb-hero ${hasPhoto ? 'has-photo' : ''}`} id="hero" ref={ref}>
       <motion.div className="sb-hero__grid" style={reduce ? undefined : { y: gridY }} aria-hidden="true" />
-      {PHOTOS.hero && (
+      {PHOTOS.hero && !photoFailed && (
         <div className="sb-hero__photo" aria-hidden="true">
-          <img src={PHOTOS.hero} alt="" />
+          <motion.img
+            src={PHOTOS.hero}
+            alt=""
+            onError={() => setPhotoFailed(true)}
+            initial={reduce ? false : { scale: 1.12 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 2.4, ease: EASE_OUT }}
+            style={reduce ? undefined : { y: photoY }}
+          />
         </div>
       )}
 

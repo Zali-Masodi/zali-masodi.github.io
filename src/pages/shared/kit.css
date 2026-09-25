@@ -6,8 +6,8 @@ html.lenis body {
 html.lenis {
   scroll-behavior: auto !important;
 }
-.lenis.lenis-stopped {
-  overflow: clip;
+[data-lenis-prevent] {
+  overscroll-behavior: contain;
 }
 
 .kit-photo {

@@ -517,6 +517,7 @@ function Header({ t, lang, setLang }: { t: Content; lang: Lang; setLang: (l: Lan
           <motion.div
             id="pk-menu"
             className="pk-menu"
+            data-lenis-prevent
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

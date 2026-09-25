@@ -1,947 +1,821 @@
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type FormEvent, type MouseEvent } from 'react';
 import {
-  createContext,
-  useContext,
-  useMemo,
-  useState,
-  useEffect,
-} from 'react';
-import type { ReactNode, ReactElement, FormEvent } from 'react';
+  AnimatePresence,
+  motion,
+  useMotionValueEvent,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  useTransform,
+} from 'framer-motion';
+import type { IconType } from 'react-icons';
+import {
+  PiArrowRightBold,
+  PiArrowUpRightBold,
+  PiBroomBold,
+  PiCouchBold,
+  PiEnvelopeSimpleBold,
+  PiFacebookLogoBold,
+  PiInstagramLogoBold,
+  PiMapPinBold,
+  PiMinusBold,
+  PiPackageBold,
+  PiPhoneBold,
+  PiPianoKeysBold,
+  PiPlusBold,
+  PiShieldCheckBold,
+  PiStarFill,
+  PiClockBold,
+  PiToolboxBold,
+  PiTrashBold,
+  PiTruckFill,
+  PiWarningCircleBold,
+  PiWrenchBold,
+} from 'react-icons/pi';
+import '@fontsource-variable/archivo/wdth';
+import '@fontsource-variable/geist-mono';
+import { Photo, Reveal } from './shared/components';
+import {
+  EASE_OUT,
+  scrollToId,
+  scrollToTop,
+  todayIndex,
+  useDocumentTitle,
+  useScrollLock,
+  useSmoothScroll,
+  useStoredLang,
+} from './shared/kit';
 import './Dodavka.css';
 
-/* ==================================================================
-   1. i18n — types, dictionaries, provider, hook
-   ================================================================== */
+/* =========================================================
+   Company details
+   ========================================================= */
+const COMPANY = {
+  name: 'Moving Co.',
+  email: 'info@movingcompany.sk',
+  phone: '+421 910 555 123',
+  phoneHref: 'tel:+421910555123',
+  /* Fill in real profile URLs to show the icons; empty ones stay hidden. */
+  facebook: '',
+  instagram: '',
+};
 
-type IconKey = 'box' | 'wrench' | 'van' | 'skip' | 'clear';
+const MAP = { lat: 48.2181, lon: 17.4, bbox: '17.383,48.206,17.417,48.230' };
 
-interface ServiceItem {
-  icon: IconKey;
-  name: string;
-  desc: string;
+/* Estimator rates, straight from the price list below. */
+const RATES = {
+  size: [120, 220, 350],
+  floor: 10,
+  wardrobe: 25,
+  km: 0.6,
+};
+
+/* Real photos: drop files into public/dodavka/ and fill in the paths,
+   e.g. about: '/dodavka/tim.jpg'. Empty slots show the cardboard fallback. */
+const PHOTOS: { about?: string; transport?: string } = {};
+
+/* =========================================================
+   Content
+   ========================================================= */
+type Lang = 'sk' | 'en';
+const LANGS = ['sk', 'en'] as const;
+
+interface Estimate {
+  size: number;
+  floors: number;
+  wardrobes: number;
+  km: number;
+  total: number;
 }
 
-interface ValueItem {
-  title: string;
-  text: string;
-}
-
-interface PricingLine {
-  name: string;
-  price: string;
-}
-
-interface PricingCategory {
-  id: string;
-  label: string;
-  items: PricingLine[];
-}
-
-interface TestimonialItem {
-  quote: string;
-  author: string;
-  role: string;
-}
-
-interface HoursRow {
-  day: string;
-  time: string;
-}
-
-interface Translations {
-  meta: {
+interface Content {
+  meta: string;
+  nav: { about: string; services: string; process: string; pricing: string; contact: string; menu: string; close: string; skip: string };
+  cta: string;
+  hero: { eyebrow: string; title: string; subtitle: string; secondary: string };
+  calc: {
     title: string;
+    hint: string;
+    what: string;
+    sizes: { name: string; sub: string }[];
+    floors: string;
+    wardrobes: string;
+    km: string;
+    less: string;
+    more: string;
+    from: string;
+    send: string;
+    summary: (e: Estimate) => string;
   };
-  nav: {
-    home: string;
-    about: string;
-    services: string;
-    pricing: string;
-    contact: string;
-    openMenu: string;
-    closeMenu: string;
-  };
-  hero: {
-    eyebrow: string;
-    title: string;
-    subtitle: string;
-    ctaServices: string;
-    ctaContact: string;
-    tagEyebrow: string;
-    tagMain: string;
-    tagSub: string;
-  };
-  about: {
-    eyebrow: string;
-    title: string;
-    paragraph: string;
-    values: ValueItem[];
-  };
-  services: {
-    eyebrow: string;
-    title: string;
-    subtitle: string;
-    items: ServiceItem[];
-  };
-  pricing: {
-    eyebrow: string;
-    title: string;
-    subtitle: string;
-    note: string;
-    categories: PricingCategory[];
-  };
-  testimonials: {
-    eyebrow: string;
-    title: string;
-    items: TestimonialItem[];
-  };
+  marquee: string[];
+  about: { title: string; paragraph: string; labelTitle: string; values: { icon: IconType; title: string; text: string }[] };
+  services: { title: string; subtitle: string; items: { icon: IconType; name: string; desc: string }[] };
+  process: { title: string; steps: { title: string; text: string }[] };
+  pricing: { title: string; subtitle: string; note: string; categories: { id: string; label: string; items: { name: string; price: string }[] }[] };
+  testimonials: { title: string; items: { quote: string; author: string; role: string }[] };
   contact: {
-    eyebrow: string;
     title: string;
     subtitle: string;
-    formName: string;
-    formEmail: string;
-    formPhone: string;
-    formSubject: string;
-    formMessage: string;
-    formSubmit: string;
-    formNote: string;
+    name: string;
+    email: string;
+    phone: string;
+    subject: string;
+    message: string;
+    optional: string;
+    submit: string;
+    note: string;
+    opened: string;
+    errName: string;
+    errEmail: string;
+    errMessage: string;
     infoTitle: string;
     address: string;
-    phone: string;
-    email: string;
     hoursTitle: string;
-    hours: HoursRow[];
-    socialTitle: string;
+    today: string;
+    hours: { days: number[]; label: string; time: string }[];
+    social: string;
   };
-  map: {
-    eyebrow: string;
-    title: string;
-    directions: string;
-  };
-  footer: {
-    tagline: string;
-    quickLinksTitle: string;
-    contactTitle: string;
-    hoursTitle: string;
-    rights: string;
-  };
+  map: { title: string; directions: string };
+  footer: { tagline: string; links: string; contact: string; rights: string; top: string };
 }
 
-const sk: Translations = {
-  meta: { title: 'Moving Company — Sťahovanie Senec' },
-  nav: {
-    home: 'Domov',
-    about: 'O nás',
-    services: 'Služby',
-    pricing: 'Cenník',
-    contact: 'Kontakt',
-    openMenu: 'Otvoriť menu',
-    closeMenu: 'Zavrieť menu',
+const content: Record<Lang, Content> = {
+  sk: {
+    meta: 'Moving Co. | Sťahovanie Senec a okolie',
+    nav: { about: 'O nás', services: 'Služby', process: 'Postup', pricing: 'Cenník', contact: 'Kontakt', menu: 'Otvoriť menu', close: 'Zavrieť menu', skip: 'Preskočiť na obsah' },
+    cta: 'Nezáväzná ponuka',
+    hero: {
+      eyebrow: 'Sťahovanie, Senec a okolie',
+      title: 'Sťahovanie bez stresu.',
+      subtitle: 'Od prvej škatule po poslednú skrutku. Byty, domy aj kancelárie, s montážou nábytku a odvozom odpadu.',
+      secondary: 'Pozrieť služby',
+    },
+    calc: {
+      title: 'Odhad ceny',
+      hint: 'Podľa nášho cenníka. Presnú cenu potvrdíme po obhliadke.',
+      what: 'Čo sťahujeme?',
+      sizes: [
+        { name: 'Malý byt', sub: '1-izbový' },
+        { name: 'Väčší byt', sub: '3-izbový' },
+        { name: 'Rodinný dom', sub: 'celý dom' },
+      ],
+      floors: 'Poschodia bez výťahu',
+      wardrobes: 'Montáž skríň',
+      km: 'Km mimo Senca',
+      less: 'Menej',
+      more: 'Viac',
+      from: 'od',
+      send: 'Chcem presnú ponuku',
+      summary: (e) =>
+        `Odhad z webu: ${['malý byt (1-izbový)', 'väčší byt (3-izbový)', 'rodinný dom'][e.size]}, ${e.floors} posch. bez výťahu, montáž ${e.wardrobes} skríň, ${e.km} km mimo Senca. Orientačne od ${e.total} €.\n\nTermín sťahovania: \nOdkiaľ a kam: `,
+    },
+    marquee: ['Byty', 'Domy', 'Kancelárie', 'Klavíry', 'Trezory', 'Biela technika', 'Stavebná suť', 'Pivnice a garáže'],
+    about: {
+      title: 'Jeden tím, jedna dodávka, žiadne prekvapenia',
+      paragraph:
+        'Sťahujeme domácnosti aj firmy v Senci a okolí Bratislavy. Každú zákazku si vopred obhliadneme alebo prekonzultujeme telefonicky, takže viete, koľko to bude stáť a koľko ľudí príde. Nábytok chránime a vieme ho rozobrať aj znova zložiť.',
+      labelTitle: 'V každej zákazke',
+      values: [
+        { icon: PiToolboxBold, title: 'Vlastné vybavenie', text: 'Sťahovacie pásy, prikrývky, plošinové vozíky aj náradie na montáž máme vždy so sebou.' },
+        { icon: PiShieldCheckBold, title: 'Poistená preprava', text: 'Každá zákazka je krytá poistením zodpovednosti za spôsobenú škodu.' },
+        { icon: PiClockBold, title: 'Presné termíny', text: 'Dohodnutý čas dodržíme. Vieme, že si na sťahovanie berete voľno.' },
+      ],
+    },
+    services: {
+      title: 'Čo pre vás prevezieme',
+      subtitle: 'Od jednej skrine po celý byt. Dodávky aj náradie na všetko, čo si sťahovanie vyžaduje, máme vlastné.',
+      items: [
+        { icon: PiCouchBold, name: 'Sťahovanie nábytku', desc: 'Byty, domy aj kancelárie. Vynesieme, odvezieme, dovezieme a uložíme na miesto.' },
+        { icon: PiWrenchBold, name: 'Montáž nábytku', desc: 'Rozloženie a opätovné zloženie skríň, postelí aj kuchynských liniek priamo u vás.' },
+        { icon: PiPianoKeysBold, name: 'Preprava veľkých predmetov', desc: 'Klavíry, trezory, biela technika a iné neskladné kusy, prevezené bezpečne.' },
+        { icon: PiTrashBold, name: 'Odvoz odpadu a sute', desc: 'Starý nábytok, stavebnú suť aj objemný odpad odvezieme na zberný dvor.' },
+        { icon: PiBroomBold, name: 'Vypratávanie priestorov', desc: 'Vyprázdnime byty, pivnice, garáže aj kancelárie pred sťahovaním či rekonštrukciou.' },
+      ],
+    },
+    process: {
+      title: 'Ako prebieha sťahovanie',
+      steps: [
+        { title: 'Zavoláte alebo napíšete', text: 'Poviete nám, čo, odkiaľ a kam treba presťahovať.' },
+        { title: 'Obhliadka a cena', text: 'Prídeme sa pozrieť alebo to prejdeme po telefóne. Cenu viete vopred.' },
+        { title: 'Balenie a nakládka', text: 'Nábytok zabalíme do prikrývok, rozoberieme a bezpečne naložíme.' },
+        { title: 'Preprava a montáž', text: 'Dovezieme, vynesieme, zložíme a uložíme presne tam, kam chcete.' },
+      ],
+    },
+    pricing: {
+      title: 'Koľko to stojí',
+      subtitle: 'Orientačný cenník. Presnú sumu určíme po obhliadke alebo telefonickom rozhovore.',
+      note: 'Cenovú ponuku pošleme do 24 hodín, zadarmo a nezáväzne.',
+      categories: [
+        {
+          id: 'moving',
+          label: 'Sťahovanie',
+          items: [
+            { name: 'Malý byt (1-izbový)', price: 'od 120 €' },
+            { name: 'Väčší byt (3-izbový)', price: 'od 220 €' },
+            { name: 'Rodinný dom', price: 'od 350 €' },
+            { name: 'Príplatok za poschodie bez výťahu', price: '10 € / podlažie' },
+          ],
+        },
+        {
+          id: 'assembly',
+          label: 'Montáž',
+          items: [
+            { name: 'Skriňa / šatník', price: 'od 25 €' },
+            { name: 'Kuchynská linka', price: 'od 60 €' },
+            { name: 'Posteľ s roštom', price: 'od 20 €' },
+            { name: 'Nábytok IKEA (kus)', price: 'od 15 €' },
+          ],
+        },
+        {
+          id: 'transport',
+          label: 'Preprava',
+          items: [
+            { name: 'Klavír / pianíno', price: 'od 90 €' },
+            { name: 'Trezor do 300 kg', price: 'od 80 €' },
+            { name: 'Chladnička / práčka', price: 'od 30 €' },
+            { name: 'Preprava mimo Senca', price: '0,60 € / km' },
+          ],
+        },
+        {
+          id: 'waste',
+          label: 'Odvoz odpadu',
+          items: [
+            { name: 'Objemný odpad (1 m³)', price: 'od 20 €' },
+            { name: 'Stavebná suť (1 m³)', price: 'od 25 €' },
+            { name: 'Vypratanie pivnice / garáže', price: 'od 90 €' },
+            { name: 'Poplatok za zberný dvor', price: 'podľa množstva' },
+          ],
+        },
+      ],
+    },
+    testimonials: {
+      title: 'Sťahovanie, na ktoré sa dá spoľahnúť',
+      items: [
+        { quote: 'Sťahovali sme 3-izbový byt aj s klavírom a všetko prebehlo rýchlo a bez jedinej škrabanca.', author: 'Lucia P.', role: 'Sťahovanie bytu, Senec' },
+        { quote: 'Prišli presne na dohodnutý čas, rozobrali skrine, previezli ich a do hodiny znova zložili.', author: 'Marek Š.', role: 'Montáž a sťahovanie, Bratislava' },
+        { quote: 'Suť z rekonštrukcie kúpeľne odviezli v ten istý deň, keď sme volali.', author: 'Zuzana a Ivan', role: 'Odvoz odpadu, Senec' },
+      ],
+    },
+    contact: {
+      title: 'Dohodnime si termín',
+      subtitle: 'Napíšte nám, čo a kedy potrebujete presťahovať, a cenovú ponuku pošleme do 24 hodín.',
+      name: 'Meno',
+      email: 'E-mail',
+      phone: 'Telefón',
+      subject: 'Predmet',
+      message: 'Čo sťahujeme?',
+      optional: 'nepovinné',
+      submit: 'Odoslať dopyt',
+      note: 'Formulár otvorí váš e-mailový program s pripravenou správou. Nič neposielame za vás.',
+      opened: 'Otvorili sme váš e-mailový program. Ak sa neotvoril, napíšte nám na',
+      errName: 'Napíšte nám, ako vás oslovovať.',
+      errEmail: 'Zadajte e-mail v tvare meno@domena.sk.',
+      errMessage: 'Napíšte pár slov o sťahovaní.',
+      infoTitle: 'Kontaktné údaje',
+      address: 'Lichnerova 89, 903 01 Senec',
+      hoursTitle: 'Otváracie hodiny',
+      today: 'dnes',
+      hours: [
+        { days: [0, 1, 2, 3, 4], label: 'Pondelok-Piatok', time: '7:00-19:00' },
+        { days: [5], label: 'Sobota', time: '8:00-14:00' },
+        { days: [6], label: 'Nedeľa', time: 'Len po dohode' },
+      ],
+      social: 'Sledujte nás',
+    },
+    map: { title: 'Sídlime v Senci, jazdíme po celom kraji', directions: 'Navigovať v Google Maps' },
+    footer: { tagline: 'Sťahovanie a preprava, na ktoré sa dá spoľahnúť.', links: 'Rýchle odkazy', contact: 'Kontakt', rights: 'Všetky práva vyhradené.', top: 'Späť hore' },
   },
-  hero: {
-    eyebrow: 'Sťahovacia spoločnosť • Senec a okolie',
-    title: 'Sťahovanie bez stresu, od prvej škatule po poslednú skrutku.',
-    subtitle:
-      'Sťahujeme byty, domy aj kancelárie, montujeme nábytok priamo na mieste a odvezieme všetko, čo sa už domov nezmestí — starý nábytok, stavebnú sutinu aj objemný odpad. Vlastný vozový park, poistená preprava, jeden telefonát stačí na termín.',
-    ctaServices: 'Pozrieť služby',
-    ctaContact: 'Nezáväzná ponuka',
-    tagEyebrow: 'Moving Co.',
-    tagMain: 'Senec',
-    tagSub: 'Nosnosť 3,5 t',
-  },
-  about: {
-    eyebrow: 'O nás',
-    title: 'Jeden tím, jedna dodávka, žiadne prekvapenia',
-    paragraph:
-      'Sťahujeme domácnosti aj firmy v Senci a okolí Bratislavy. Každú zákazku si vopred obhliadneme alebo prekonzultujeme telefonicky, takže vopred viete, koľko to bude stáť a koľko ľudí príde. Nábytok chránime, vieme ho rozobrať aj znova zložiť na novom mieste.',
-    values: [
-      { title: 'Vlastné vybavenie', text: 'Sťahovacie pásy, prikrývky, plošinové vozíky aj náradie na montáž máme vždy so sebou.' },
-      { title: 'Poistená preprava', text: 'Každá zákazka je krytá poistením zodpovednosti za spôsobenú škodu.' },
-      { title: 'Presné termíny', text: 'Dohodnutý čas dodržíme — vieme, že si na sťahovanie berete voľno.' },
-    ],
-  },
-  services: {
-    eyebrow: 'Naše služby',
-    title: 'Čo pre vás prevezieme',
-    subtitle: 'Od jednej skrine po celý byt — vlastníme dodávky aj náradie na všetko, čo si sťahovanie vyžaduje.',
-    items: [
-      { icon: 'box', name: 'Sťahovanie nábytku', desc: 'Byty, domy aj kancelárie — vynesieme, odvezieme, dovezieme a uložíme na miesto.' },
-      { icon: 'wrench', name: 'Montáž nábytku', desc: 'Rozloženie a opätovné zloženie skríň, postelí aj kuchynských liniek priamo u vás.' },
-      { icon: 'van', name: 'Preprava veľkých predmetov', desc: 'Klavíry, trezory, biele techniky a iné neskladné kusy prevezieme bezpečne.' },
-      { icon: 'skip', name: 'Odvoz odpadu a sute', desc: 'Vypraceme starý nábytok, stavebnú sutinu aj objemný odpad na zberný dvor.' },
-      { icon: 'clear', name: 'Vypratávanie priestorov', desc: 'Vyprázdnime byty, pivnice, garáže aj kancelárie pred sťahovaním či rekonštrukciou.' },
-    ],
-  },
-  pricing: {
-    eyebrow: 'Cenník',
-    title: 'Koľko to stojí',
-    subtitle: 'Orientačný cenník — presnú sumu vieme určiť po obhliadke alebo telefonickom rozhovore.',
-    note: 'Presnú cenu vieme určiť po telefonickej alebo osobnej obhliadke — kontaktujte nás pre nezáväznú kalkuláciu.',
-    categories: [
-      {
-        id: 'moving', label: 'Sťahovanie',
-        items: [
-          { name: 'Malý byt (1-izbový)', price: 'od 120 €' },
-          { name: 'Väčší byt (3-izbový)', price: 'od 220 €' },
-          { name: 'Rodinný dom', price: 'od 350 €' },
-          { name: 'Príplatok za poschodie bez výťahu', price: '10 €/podlažie' },
-        ],
-      },
-      {
-        id: 'assembly', label: 'Montáž',
-        items: [
-          { name: 'Skriňa / šatník', price: 'od 25 €' },
-          { name: 'Kuchynská linka', price: 'od 60 €' },
-          { name: 'Posteľ s roštom', price: 'od 20 €' },
-          { name: 'Nábytok IKEA (kus)', price: 'od 15 €' },
-        ],
-      },
-      {
-        id: 'transport', label: 'Preprava',
-        items: [
-          { name: 'Klavír / pianíno', price: 'od 90 €' },
-          { name: 'Trezor do 300 kg', price: 'od 80 €' },
-          { name: 'Chladnička / práčka', price: 'od 30 €' },
-          { name: 'Preprava mimo Senca', price: '0,60 €/km' },
-        ],
-      },
-      {
-        id: 'waste', label: 'Odvoz odpadu',
-        items: [
-          { name: 'Objemný odpad (1 m³)', price: 'od 20 €' },
-          { name: 'Stavebná sutina (1 m³)', price: 'od 25 €' },
-          { name: 'Vypratanie pivnice / garáže', price: 'od 90 €' },
-          { name: 'Poplatok za zberný dvor', price: 'podľa množstva' },
-        ],
-      },
-    ],
-  },
-  testimonials: {
-    eyebrow: 'Referencie',
-    title: 'Sťahovanie, na ktoré sa dá spoľahnúť',
-    items: [
-      { quote: 'Sťahovali sme 3-izbový byt aj s klavírom a všetko prebehlo rýchlo a bez jednej škrabance.', author: 'Lucia P.', role: 'Sťahovanie bytu, Senec' },
-      { quote: 'Prišli presne na dohodnutý čas, rozobrali skrine, previezli a znova zložili do hodiny.', author: 'Marek Š.', role: 'Montáž a sťahovanie, Bratislava' },
-      { quote: 'Odviezli nám sutinu z rekonštrukcie kúpeľne v ten istý deň, keď sme volali.', author: 'Zuzana a Ivan', role: 'Odvoz odpadu, Senec' },
-    ],
-  },
-  contact: {
-    eyebrow: 'Kontakt',
-    title: 'Dohodnime si termín',
-    subtitle: 'Napíšte nám, čo a kedy potrebujete presťahovať, a pošleme vám cenovú ponuku do 24 hodín.',
-    formName: 'Meno',
-    formEmail: 'Váš e-mail',
-    formPhone: 'Telefón',
-    formSubject: 'Predmet',
-    formMessage: 'Správa',
-    formSubmit: 'Otvoriť v e-mailovej aplikácii',
-    formNote: 'Po odoslaní sa otvorí vaša e-mailová aplikácia s predvyplnenou správou — nič neposielame za vás.',
-    infoTitle: 'Kontaktné údaje',
-    address: 'Lichnerova 89, 903 01 Senec',
-    phone: '+421 910 555 123',
-    email: 'info@movingcompany.sk',
-    hoursTitle: 'Otváracie hodiny',
-    hours: [
-      { day: 'Pondelok – Piatok', time: '7:00 – 19:00' },
-      { day: 'Sobota', time: '8:00 – 14:00' },
-      { day: 'Nedeľa', time: 'Len po dohode' },
-    ],
-    socialTitle: 'Sledujte nás',
-  },
-  map: {
-    eyebrow: 'Kde nás nájdete',
-    title: 'Sídlime v Senci, jazdíme po celom kraji',
-    directions: 'Otvoriť trasu v Google Maps',
-  },
-  footer: {
-    tagline: 'Sťahovanie a preprava, na ktoré sa dá spoľahnúť.',
-    quickLinksTitle: 'Rýchle odkazy',
-    contactTitle: 'Kontakt',
-    hoursTitle: 'Otváracie hodiny',
-    rights: 'Všetky práva vyhradené.',
+  en: {
+    meta: 'Moving Co. | Movers in Senec and around',
+    nav: { about: 'About', services: 'Services', process: 'Process', pricing: 'Pricing', contact: 'Contact', menu: 'Open menu', close: 'Close menu', skip: 'Skip to content' },
+    cta: 'Free quote',
+    hero: {
+      eyebrow: 'Movers, Senec and around',
+      title: 'Stress-free moving.',
+      subtitle: 'From the first box to the last screw. Flats, houses and offices, with furniture assembly and waste removal.',
+      secondary: 'See services',
+    },
+    calc: {
+      title: 'Price estimate',
+      hint: 'Based on our price list. We confirm the exact price after a walkthrough.',
+      what: 'What are we moving?',
+      sizes: [
+        { name: 'Small flat', sub: '1-bedroom' },
+        { name: 'Larger flat', sub: '3-bedroom' },
+        { name: 'Family house', sub: 'whole house' },
+      ],
+      floors: 'Floors without a lift',
+      wardrobes: 'Wardrobes to assemble',
+      km: 'Km outside Senec',
+      less: 'Fewer',
+      more: 'More',
+      from: 'from',
+      send: 'Get an exact quote',
+      summary: (e) =>
+        `Website estimate: ${['small flat (1-bedroom)', 'larger flat (3-bedroom)', 'family house'][e.size]}, ${e.floors} floors without a lift, ${e.wardrobes} wardrobes to assemble, ${e.km} km outside Senec. Roughly from €${e.total}.\n\nMoving date: \nFrom and to: `,
+    },
+    marquee: ['Flats', 'Houses', 'Offices', 'Pianos', 'Safes', 'Appliances', 'Building debris', 'Cellars and garages'],
+    about: {
+      title: 'One crew, one van, no surprises',
+      paragraph:
+        'We move homes and businesses in Senec and around Bratislava. Every job gets a walkthrough or a phone consultation first, so you know the cost and crew size upfront. We protect your furniture and can take it apart and rebuild it.',
+      labelTitle: 'On every job',
+      values: [
+        { icon: PiToolboxBold, title: 'Our own gear', text: 'Moving straps, blankets, dollies and assembly tools always come with us.' },
+        { icon: PiShieldCheckBold, title: 'Insured transport', text: 'Every job is covered by liability insurance for damages.' },
+        { icon: PiClockBold, title: 'On time, every time', text: 'We keep the agreed slot. We know you took time off work for this.' },
+      ],
+    },
+    services: {
+      title: "What we'll haul for you",
+      subtitle: 'From a single wardrobe to a whole flat. We own the vans and the tools for whatever the move needs.',
+      items: [
+        { icon: PiCouchBold, name: 'Furniture moving', desc: 'Flats, houses and offices. We carry it out, drive it over and set it in place.' },
+        { icon: PiWrenchBold, name: 'Furniture assembly', desc: 'We take apart and rebuild wardrobes, beds and kitchen units right on site.' },
+        { icon: PiPianoKeysBold, name: 'Large item transport', desc: 'Pianos, safes, appliances and other bulky pieces, moved safely.' },
+        { icon: PiTrashBold, name: 'Waste and debris removal', desc: 'Old furniture, building debris and bulky waste taken to the disposal site.' },
+        { icon: PiBroomBold, name: 'Clearing spaces', desc: 'We empty flats, cellars, garages and offices before a move or renovation.' },
+      ],
+    },
+    process: {
+      title: 'How a move works',
+      steps: [
+        { title: 'Call or write', text: 'Tell us what needs moving, from where and to where.' },
+        { title: 'Walkthrough and price', text: 'We come over or go through it by phone. You know the price upfront.' },
+        { title: 'Packing and loading', text: 'We wrap furniture in blankets, take it apart and load it safely.' },
+        { title: 'Delivery and assembly', text: 'We drive it over, carry it in, rebuild it and put it exactly where you want.' },
+      ],
+    },
+    pricing: {
+      title: 'What it costs',
+      subtitle: 'A guide price list. The exact quote follows a walkthrough or a phone call.',
+      note: "We'll send your quote within 24 hours, free and with no obligation.",
+      categories: [
+        {
+          id: 'moving',
+          label: 'Moving',
+          items: [
+            { name: 'Small flat (1-bedroom)', price: 'from €120' },
+            { name: 'Larger flat (3-bedroom)', price: 'from €220' },
+            { name: 'Family house', price: 'from €350' },
+            { name: 'No-lift surcharge', price: '€10 / floor' },
+          ],
+        },
+        {
+          id: 'assembly',
+          label: 'Assembly',
+          items: [
+            { name: 'Wardrobe / closet', price: 'from €25' },
+            { name: 'Kitchen unit', price: 'from €60' },
+            { name: 'Bed with frame', price: 'from €20' },
+            { name: 'IKEA furniture (each)', price: 'from €15' },
+          ],
+        },
+        {
+          id: 'transport',
+          label: 'Transport',
+          items: [
+            { name: 'Piano', price: 'from €90' },
+            { name: 'Safe up to 300 kg', price: 'from €80' },
+            { name: 'Fridge / washing machine', price: 'from €30' },
+            { name: 'Transport outside Senec', price: '€0.60 / km' },
+          ],
+        },
+        {
+          id: 'waste',
+          label: 'Waste removal',
+          items: [
+            { name: 'Bulky waste (1 m³)', price: 'from €20' },
+            { name: 'Building debris (1 m³)', price: 'from €25' },
+            { name: 'Cellar / garage clearance', price: 'from €90' },
+            { name: 'Disposal site fee', price: 'by volume' },
+          ],
+        },
+      ],
+    },
+    testimonials: {
+      title: 'Moving you can count on',
+      items: [
+        { quote: 'We moved a 3-bedroom flat, piano included, and everything went fast without a single scratch.', author: 'Lucia P.', role: 'Flat move, Senec' },
+        { quote: 'They showed up right on time, took the wardrobes apart, moved them and rebuilt everything within the hour.', author: 'Marek Š.', role: 'Assembly and move, Bratislava' },
+        { quote: 'They hauled away our bathroom renovation debris the same day we called.', author: 'Zuzana & Ivan', role: 'Waste removal, Senec' },
+      ],
+    },
+    contact: {
+      title: "Let's book your date",
+      subtitle: "Tell us what and when you need moved, and we'll send a quote within 24 hours.",
+      name: 'Name',
+      email: 'Email',
+      phone: 'Phone',
+      subject: 'Subject',
+      message: 'What are we moving?',
+      optional: 'optional',
+      submit: 'Send request',
+      note: 'The form opens your own email app with the message ready. We never send anything for you.',
+      opened: "We've opened your email app. If nothing happened, write to us at",
+      errName: 'Tell us what to call you.',
+      errEmail: 'Enter an email like name@domain.com.',
+      errMessage: 'Add a few words about the move.',
+      infoTitle: 'Contact details',
+      address: 'Lichnerova 89, 903 01 Senec, Slovakia',
+      hoursTitle: 'Opening hours',
+      today: 'today',
+      hours: [
+        { days: [0, 1, 2, 3, 4], label: 'Monday-Friday', time: '7:00-19:00' },
+        { days: [5], label: 'Saturday', time: '8:00-14:00' },
+        { days: [6], label: 'Sunday', time: 'By arrangement' },
+      ],
+      social: 'Follow us',
+    },
+    map: { title: 'Based in Senec, on the road across the region', directions: 'Directions in Google Maps' },
+    footer: { tagline: 'Moving and transport you can rely on.', links: 'Quick links', contact: 'Contact', rights: 'All rights reserved.', top: 'Back to top' },
   },
 };
 
-const en: Translations = {
-  meta: { title: 'Moving Company — Senec Movers' },
-  nav: {
-    home: 'Home',
-    about: 'About us',
-    services: 'Services',
-    pricing: 'Pricing',
-    contact: 'Contact',
-    openMenu: 'Open menu',
-    closeMenu: 'Close menu',
-  },
-  hero: {
-    eyebrow: 'Moving company • Senec & surroundings',
-    title: 'Moving day, minus the stress — box one to the last screw.',
-    subtitle:
-      'We move flats, houses and offices, assemble furniture on site, and haul away anything that no longer fits — old furniture, construction debris, bulky waste. Our own van fleet, insured transport, one call books the date.',
-    ctaServices: 'See our services',
-    ctaContact: 'Get a free quote',
-    tagEyebrow: 'Moving Co.',
-    tagMain: 'Senec',
-    tagSub: '3.5 t payload',
-  },
-  about: {
-    eyebrow: 'About us',
-    title: 'One crew, one van, no surprises',
-    paragraph:
-      'We move homes and businesses in Senec and around Bratislava. Every job gets a walkthrough or a phone consultation first, so you know the cost and crew size upfront. We protect your furniture, and can take it apart and rebuild it at the new place.',
-    values: [
-      { title: 'Our own gear', text: 'Moving straps, blankets, dollies and assembly tools always come with us.' },
-      { title: 'Insured transport', text: 'Every job is covered by liability insurance for damages.' },
-      { title: 'On-time, every time', text: 'We keep the agreed slot — we know you took time off work for this.' },
-    ],
-  },
-  services: {
-    eyebrow: 'Our services',
-    title: "What we'll haul for you",
-    subtitle: 'From a single wardrobe to a whole flat — we bring the vans and tools for whatever the move needs.',
-    items: [
-      { icon: 'box', name: 'Furniture moving', desc: 'Flats, houses and offices — we carry it out, drive it over, and set it in place.' },
-      { icon: 'wrench', name: 'Furniture assembly', desc: 'We disassemble and rebuild wardrobes, beds and kitchen units right on site.' },
-      { icon: 'van', name: 'Large item transport', desc: 'Pianos, safes, appliances and other oversized pieces, moved safely.' },
-      { icon: 'skip', name: 'Waste & debris removal', desc: 'We clear old furniture, construction debris and bulky waste to the disposal site.' },
-      { icon: 'clear', name: 'Clearing spaces', desc: 'We empty flats, cellars, garages and offices before a move or renovation.' },
-    ],
-  },
-  pricing: {
-    eyebrow: 'Pricing',
-    title: 'What it costs',
-    subtitle: 'A guide price list — the exact quote follows a walkthrough or a phone call.',
-    note: "We'll confirm the exact price after a phone or in-person walkthrough — get in touch for a free quote.",
-    categories: [
-      {
-        id: 'moving', label: 'Moving',
-        items: [
-          { name: 'Small flat (1-bedroom)', price: 'from €120' },
-          { name: 'Larger flat (3-bedroom)', price: 'from €220' },
-          { name: 'Family house', price: 'from €350' },
-          { name: 'No-lift surcharge', price: '€10/floor' },
-        ],
-      },
-      {
-        id: 'assembly', label: 'Assembly',
-        items: [
-          { name: 'Wardrobe / closet', price: 'from €25' },
-          { name: 'Kitchen unit', price: 'from €60' },
-          { name: 'Bed with frame', price: 'from €20' },
-          { name: 'IKEA furniture (each)', price: 'from €15' },
-        ],
-      },
-      {
-        id: 'transport', label: 'Transport',
-        items: [
-          { name: 'Piano', price: 'from €90' },
-          { name: 'Safe up to 300 kg', price: 'from €80' },
-          { name: 'Fridge / washing machine', price: 'from €30' },
-          { name: 'Transport outside Senec', price: '€0.60/km' },
-        ],
-      },
-      {
-        id: 'waste', label: 'Waste removal',
-        items: [
-          { name: 'Bulky waste (1 m³)', price: 'from €20' },
-          { name: 'Construction debris (1 m³)', price: 'from €25' },
-          { name: 'Cellar / garage clearance', price: 'from €90' },
-          { name: 'Disposal site fee', price: 'depends on volume' },
-        ],
-      },
-    ],
-  },
-  testimonials: {
-    eyebrow: 'Reviews',
-    title: 'Moving you can count on',
-    items: [
-      { quote: 'We moved a 3-bedroom flat, piano included, and everything went fast without a single scratch.', author: 'Lucia P.', role: 'Flat move, Senec' },
-      { quote: 'They showed up right on time, took the wardrobes apart, moved them, and rebuilt everything within the hour.', author: 'Marek Š.', role: 'Assembly & move, Bratislava' },
-      { quote: 'They hauled away our bathroom renovation debris the same day we called.', author: 'Zuzana & Ivan', role: 'Waste removal, Senec' },
-    ],
-  },
-  contact: {
-    eyebrow: 'Contact',
-    title: "Let's book your date",
-    subtitle: "Tell us what and when you need moved, and we'll send a quote within 24 hours.",
-    formName: 'Name',
-    formEmail: 'Your email',
-    formPhone: 'Phone',
-    formSubject: 'Subject',
-    formMessage: 'Message',
-    formSubmit: 'Open in email app',
-    formNote: 'Sending this opens your own email app with the message pre-filled — we never send anything for you.',
-    infoTitle: 'Contact details',
-    address: 'Lichnerova 89, 903 01 Senec, Slovakia',
-    phone: '+421 910 555 123',
-    email: 'info@movingcompany.sk',
-    hoursTitle: 'Opening hours',
-    hours: [
-      { day: 'Monday – Friday', time: '7:00 – 19:00' },
-      { day: 'Saturday', time: '8:00 – 14:00' },
-      { day: 'Sunday', time: 'By arrangement' },
-    ],
-    socialTitle: 'Follow us',
-  },
-  map: {
-    eyebrow: 'Find us',
-    title: 'Based in Senec, on the road across the region',
-    directions: 'Open directions in Google Maps',
-  },
-  footer: {
-    tagline: 'Moving and transport you can rely on.',
-    quickLinksTitle: 'Quick links',
-    contactTitle: 'Contact',
-    hoursTitle: 'Opening hours',
-    rights: 'All rights reserved.',
-  },
-};
-
-const languages: { code: string; label: string }[] = [
-  { code: 'sk', label: 'SK' },
-  { code: 'en', label: 'EN' },
+type NavKey = 'about' | 'services' | 'process' | 'pricing' | 'contact';
+const NAV: { id: string; key: NavKey }[] = [
+  { id: 'about', key: 'about' },
+  { id: 'services', key: 'services' },
+  { id: 'process', key: 'process' },
+  { id: 'pricing', key: 'pricing' },
+  { id: 'contact', key: 'contact' },
 ];
 
-const dictionaries: Record<string, Translations> = { sk, en };
-const DEFAULT_LANGUAGE = 'sk';
-
-interface LanguageContextValue {
-  language: string;
-  setLanguage: (code: string) => void;
-  t: Translations;
-  languages: { code: string; label: string }[];
-}
-
-const LanguageContext = createContext<LanguageContextValue | undefined>(undefined);
-
-function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<string>(DEFAULT_LANGUAGE);
-
-  const setLanguage = (code: string) => {
-    if (dictionaries[code]) setLanguageState(code);
+/* =========================================================
+   Helpers
+   ========================================================= */
+function go(id: string, after?: () => void) {
+  return (e: MouseEvent) => {
+    e.preventDefault();
+    after?.();
+    scrollToId(id, -88);
   };
-
-  const value = useMemo<LanguageContextValue>(
-    () => ({
-      language,
-      setLanguage,
-      t: dictionaries[language] ?? dictionaries[DEFAULT_LANGUAGE],
-      languages,
-    }),
-    [language],
-  );
-
-  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 
-function useLanguage(): LanguageContextValue {
-  const ctx = useContext(LanguageContext);
-  if (!ctx) throw new Error('useLanguage must be used within a LanguageProvider');
-  return ctx;
-}
-
-/* ==================================================================
-   2. Header
-   ================================================================== */
-
-const NAV_ITEMS: { key: 'about' | 'services' | 'pricing' | 'contact'; href: string }[] = [
-  { key: 'about', href: '#about' },
-  { key: 'services', href: '#services' },
-  { key: 'pricing', href: '#pricing' },
-  { key: 'contact', href: '#contact' },
-];
-
-function Header() {
-  const { t, language, setLanguage, languages } = useLanguage();
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
+function Kraft({ icon: Icon = PiPackageBold }: { icon?: IconType }) {
   return (
-    <header className={`site-header ${scrolled ? 'is-scrolled' : ''}`}>
-      <div className="site-header__inner">
-        <a href="#top" className="brand">
-          <strong>MOVING CO.</strong>
-          <span>Senec</span>
-        </a>
-
-        <nav className={`main-nav ${menuOpen ? 'is-open' : ''}`} aria-label="Hlavná navigácia">
-          <ul>
-            {NAV_ITEMS.map((item) => (
-              <li key={item.key}>
-                <a href={item.href} onClick={() => setMenuOpen(false)}>
-                  {t.nav[item.key]}
-                </a>
-              </li>
-            ))}
-          </ul>
-
-          <div className="lang-switch" role="group" aria-label="Jazyk / Language">
-            {languages.map((lng) => (
-              <button
-                key={lng.code}
-                type="button"
-                className={lng.code === language ? 'is-active' : ''}
-                onClick={() => setLanguage(lng.code)}
-              >
-                {lng.label}
-              </button>
-            ))}
-          </div>
-        </nav>
-
-        <button
-          type="button"
-          className={`menu-toggle ${menuOpen ? 'is-open' : ''}`}
-          aria-label={menuOpen ? t.nav.closeMenu : t.nav.openMenu}
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
-      </div>
-    </header>
-  );
-}
-
-/* ==================================================================
-   3. Hero
-   ================================================================== */
-
-function VanIllustration() {
-  return (
-    <svg viewBox="0 0 420 300" className="hero-van" aria-hidden="true">
-      <ellipse cx="210" cy="248" rx="160" ry="18" className="hero-van__shadow" />
-      <path
-        className="hero-van__body"
-        d="M40 200V110c0-8 6-14 14-14h150v104H40Z"
-      />
-      <path
-        className="hero-van__body"
-        d="M204 96h74l52 46v58h-126V96Z"
-      />
-      <rect x="228" y="112" width="46" height="34" rx="4" className="hero-van__window" />
-      <rect x="54" y="112" width="86" height="60" rx="4" className="hero-van__window" />
-      <rect x="40" y="176" width="286" height="16" className="hero-van__stripe" />
-      <g>
-        <circle cx="104" cy="204" r="26" className="hero-van__wheel-rim" />
-        <circle cx="104" cy="204" r="11" className="hero-van__wheel-hub" />
-        <g className="hero-van__spokes">
-          <line x1="104" y1="192" x2="104" y2="216" />
-          <line x1="92" y1="204" x2="116" y2="204" />
-        </g>
-      </g>
-      <g>
-        <circle cx="288" cy="204" r="26" className="hero-van__wheel-rim" />
-        <circle cx="288" cy="204" r="11" className="hero-van__wheel-hub" />
-        <g className="hero-van__spokes">
-          <line x1="288" y1="192" x2="288" y2="216" />
-          <line x1="276" y1="204" x2="300" y2="204" />
-        </g>
-      </g>
-    </svg>
-  );
-}
-
-function CargoTag({ eyebrow, main, sub }: { eyebrow: string; main: string; sub: string }) {
-  return (
-    <svg viewBox="0 0 160 190" className="cargo-tag" aria-hidden="true">
-      <line x1="80" y1="0" x2="80" y2="26" className="cargo-tag__string" />
-      <path
-        className="cargo-tag__body"
-        d="M20 34h120a6 6 0 0 1 6 6v120a6 6 0 0 1-6 6H20a6 6 0 0 1-6-6V40a6 6 0 0 1 6-6Z"
-      />
-      <circle cx="80" cy="18" r="10" className="cargo-tag__hole" />
-      <text x="80" y="72" textAnchor="middle" className="cargo-tag__eyebrow">
-        {eyebrow}
-      </text>
-      <text x="80" y="104" textAnchor="middle" className="cargo-tag__main">
-        {main}
-      </text>
-      <line x1="36" y1="122" x2="124" y2="122" stroke="#4a4f54" strokeWidth="1" />
-      <text x="80" y="144" textAnchor="middle" className="cargo-tag__sub">
-        {sub}
-      </text>
-    </svg>
-  );
-}
-
-function PhotoPlaceholder({
-  label,
-  className = '',
-}: {
-  label: string;
-  className?: string;
-}) {
-  return (
-    <div className={`photo-placeholder ${className}`} role="img" aria-label={label}>
-      <svg viewBox="0 0 24 24" className="photo-placeholder__icon" aria-hidden="true">
-        <rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="1.4" />
-        <circle cx="8.5" cy="10" r="1.6" fill="none" stroke="currentColor" strokeWidth="1.4" />
-        <path d="M4 16.5 9 12l3.2 3 3-2.6L20 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-      <span className="photo-placeholder__label">{label}</span>
+    <div className="dv-kraft">
+      <span className="dv-kraft__tape" />
+      <Icon className="dv-kraft__stamp" aria-hidden="true" />
     </div>
   );
 }
 
-function Hero() {
-  const { t } = useLanguage();
-
+function LangSwitch({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
   return (
-    <section id="top" className="hero">
-      <div className="hero__inner">
-        <div className="hero__copy">
-          <span className="eyebrow">{t.hero.eyebrow}</span>
-          <h1 className="hero__title">{t.hero.title}</h1>
-          <p className="hero__subtitle">{t.hero.subtitle}</p>
-          <div className="hero__cta-row">
-            <a href="#services" className="btn btn--primary">{t.hero.ctaServices}</a>
-            <a href="#contact" className="btn btn--ghost">{t.hero.ctaContact}</a>
-          </div>
-        </div>
-
-        <div className="hero__visual">
-          <PhotoPlaceholder label="Fotka: sťahovacia dodávka v Senci" className="hero__photo" />
-          <VanIllustration />
-          <div className="hero__tag-wrap">
-            <CargoTag eyebrow={t.hero.tagEyebrow} main={t.hero.tagMain} sub={t.hero.tagSub} />
-          </div>
-        </div>
-      </div>
-      <div className="road-divider" aria-hidden="true" />
-    </section>
+    <div className="dv-lang" role="group" aria-label="Jazyk / Language">
+      {LANGS.map((code) => (
+        <button key={code} type="button" aria-pressed={lang === code} onClick={() => setLang(code)}>
+          {code.toUpperCase()}
+        </button>
+      ))}
+    </div>
   );
 }
 
-/* ==================================================================
-   4. About
-   ================================================================== */
-
-function CrateIllustration() {
+function Button({ label, onClick, href, variant = 'solid' }: { label: string; onClick?: (e: MouseEvent) => void; href: string; variant?: 'solid' | 'ghost' | 'ink' }) {
   return (
-    <svg viewBox="0 0 320 300" className="crate-illustration" aria-hidden="true">
-      <circle cx="160" cy="150" r="140" className="crate-illustration__ring" />
-      <rect x="70" y="110" width="180" height="130" rx="6" className="crate-illustration__box" />
-      <line x1="160" y1="110" x2="160" y2="240" className="crate-illustration__tape" />
-      <line x1="70" y1="175" x2="250" y2="175" className="crate-illustration__tape" />
-      <path d="M40 150c10-8 20-8 30 0M250 150c10-8 20-8 30 0" className="crate-illustration__strap" />
-      <rect x="95" y="80" width="130" height="34" rx="4" className="crate-illustration__box" />
-    </svg>
+    <a href={href} onClick={onClick} className={`dv-btn dv-btn--${variant}`}>
+      <span>{label}</span>
+      <span className="dv-btn__icon" aria-hidden="true">
+        <PiArrowRightBold />
+      </span>
+    </a>
   );
 }
 
-function ValueIcon() {
+function Logo() {
   return (
-    <svg viewBox="0 0 24 24" className="value-card__icon" aria-hidden="true">
-      <path d="M12 2 3 6v6c0 5 4 8.5 9 10 5-1.5 9-5 9-10V6l-9-4Z" stroke="currentColor" strokeWidth="1.4" fill="none" />
-      <path d="M8.5 12.3 11 15l5-6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <span className="dv-logo">
+      <span className="dv-logo__mark" aria-hidden="true">
+        <PiTruckFill />
+      </span>
+      <span className="dv-logo__text">
+        Moving Co.
+        <small>Senec</small>
+      </span>
+    </span>
   );
 }
 
-function About() {
-  const { t } = useLanguage();
+/* =========================================================
+   Header: hides while scrolling down, returns on scroll up
+   ========================================================= */
+function Header({ t, lang, setLang }: { t: Content; lang: Lang; setLang: (l: Lang) => void }) {
+  const { scrollY } = useScroll();
+  const [hidden, setHidden] = useState(false);
+  const [raised, setRaised] = useState(false);
+  const [open, setOpen] = useState(false);
+  const reduce = useReducedMotion();
+  useScrollLock(open);
+  const close = () => setOpen(false);
+
+  useMotionValueEvent(scrollY, 'change', (y) => {
+    const prev = scrollY.getPrevious() ?? 0;
+    setRaised(y > 12);
+    if (y < 160) setHidden(false);
+    else if (y - prev > 6) setHidden(true);
+    else if (prev - y > 6) setHidden(false);
+  });
 
   return (
-    <section id="about" className="about">
-      <div className="about__inner">
-        <div className="about__visual">
-          <PhotoPlaceholder label="Fotka: tím pri nakladaní nábytku" className="about__photo" />
-          <CrateIllustration />
-        </div>
-
-        <div className="about__content">
-          <span className="eyebrow">{t.about.eyebrow}</span>
-          <h2 className="section-title">{t.about.title}</h2>
-          <p className="about__paragraph">{t.about.paragraph}</p>
-
-          <ul className="value-list">
-            {t.about.values.map((value) => (
-              <li key={value.title} className="value-card">
-                <ValueIcon />
-                <div>
-                  <h3>{value.title}</h3>
-                  <p>{value.text}</p>
-                </div>
-              </li>
+    <>
+      <header className={`dv-header ${raised ? 'is-raised' : ''} ${hidden && !open ? 'is-hidden' : ''}`}>
+        <div className="dv-wrap dv-header__bar">
+          <a href="#top" className="dv-header__brand" onClick={go('top', close)} aria-label="Moving Co. Senec">
+            <Logo />
+          </a>
+          <nav className="dv-nav" aria-label="Hlavná navigácia">
+            {NAV.map((item) => (
+              <a key={item.id} href={`#${item.id}`} onClick={go(item.id)}>
+                {t.nav[item.key]}
+              </a>
             ))}
-          </ul>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ==================================================================
-   5. Services
-   ================================================================== */
-
-const SERVICE_ICONS: Record<IconKey, ReactElement> = {
-  box: <path d="M3 7 12 3l9 4-9 4-9-4Zm0 0v10l9 4 9-4V7M12 11v10" />,
-  wrench: <path d="M21 7a4 4 0 0 1-5.3 3.8L9 17.5a2 2 0 1 1-2.8-2.8l6.7-6.7A4 4 0 1 1 21 7Z" />,
-  van: <path d="M3 16V7a1 1 0 0 1 1-1h8v10H3Zm9-7h4.5L21 13v3h-2M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />,
-  skip: <path d="M5 7h14M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m-9 0 1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13M10 11v6M14 11v6" />,
-  clear: <path d="M4 5h16v5H4V5Zm2 5v9a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-9M10 14h4" />,
-};
-
-function Services() {
-  const { t } = useLanguage();
-
-  return (
-    <section id="services" className="services">
-      <div className="services__inner">
-        <div className="services__heading">
-          <span className="eyebrow">{t.services.eyebrow}</span>
-          <h2 className="section-title">{t.services.title}</h2>
-          <p className="section-subtitle">{t.services.subtitle}</p>
-        </div>
-
-        <div className="services__grid">
-          {t.services.items.map((item) => (
-            <article key={item.name} className="service-card">
-              <PhotoPlaceholder label={`Fotka: ${item.name}`} className="service-card__photo" />
-              <div className="service-card__icon-wrap">
-                <svg viewBox="0 0 24 24" className="service-card__icon" aria-hidden="true">
-                  <g fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                    {SERVICE_ICONS[item.icon]}
-                  </g>
-                </svg>
-              </div>
-              <h3>{item.name}</h3>
-              <p>{item.desc}</p>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ==================================================================
-   6. Pricing
-   ================================================================== */
-
-function Pricing() {
-  const { t } = useLanguage();
-  const [active, setActive] = useState(t.pricing.categories[0]?.id);
-
-  useEffect(() => {
-    setActive(t.pricing.categories[0]?.id);
-  }, [t]);
-
-  const activeCategory = t.pricing.categories.find((c) => c.id === active) ?? t.pricing.categories[0];
-
-  return (
-    <section id="pricing" className="pricing">
-      <div className="pricing__inner">
-        <div className="pricing__heading">
-          <span className="eyebrow">{t.pricing.eyebrow}</span>
-          <h2 className="section-title">{t.pricing.title}</h2>
-          <p className="section-subtitle">{t.pricing.subtitle}</p>
-        </div>
-
-        <div className="pricing__tabs" role="tablist" aria-label={t.pricing.title}>
-          {t.pricing.categories.map((cat) => (
+          </nav>
+          <div className="dv-header__actions">
+            <LangSwitch lang={lang} setLang={setLang} />
+            <a href={COMPANY.phoneHref} className="dv-header__phone">
+              <PiPhoneBold aria-hidden="true" />
+              <span>{COMPANY.phone}</span>
+            </a>
             <button
-              key={cat.id}
-              role="tab"
               type="button"
-              aria-selected={cat.id === activeCategory?.id}
-              className={`pricing__tab ${cat.id === activeCategory?.id ? 'is-active' : ''}`}
-              onClick={() => setActive(cat.id)}
+              className={`dv-burger ${open ? 'is-open' : ''}`}
+              aria-label={open ? t.nav.close : t.nav.menu}
+              aria-expanded={open}
+              aria-controls="dv-menu"
+              onClick={() => setOpen((v) => !v)}
             >
-              {cat.label}
+              <span />
+              <span />
             </button>
-          ))}
+          </div>
         </div>
+      </header>
 
-        <div className="price-tag-grid">
-          {activeCategory?.items.map((item) => (
-            <div className="price-tag" key={item.name}>
-              <span className="price-tag__hole" />
-              <span className="price-tag__name">{item.name}</span>
-              <span className="price-tag__price">{item.price}</span>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            id="dv-menu"
+            className="dv-menu"
+            data-lenis-prevent
+            initial={reduce ? { opacity: 0 } : { y: '-100%' }}
+            animate={reduce ? { opacity: 1 } : { y: '0%' }}
+            exit={reduce ? { opacity: 0 } : { y: '-100%' }}
+            transition={{ duration: 0.7, ease: EASE_OUT }}
+          >
+            <nav className="dv-menu__nav" aria-label="Mobilná navigácia">
+              {NAV.map((item, i) => (
+                <motion.a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  onClick={go(item.id, close)}
+                  initial={reduce ? false : { x: -32, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ duration: 0.7, delay: 0.2 + i * 0.05, ease: EASE_OUT }}
+                >
+                  {t.nav[item.key]}
+                  <PiArrowRightBold aria-hidden="true" />
+                </motion.a>
+              ))}
+            </nav>
+            <div className="dv-menu__foot">
+              <a href={COMPANY.phoneHref}>
+                <PiPhoneBold aria-hidden="true" /> {COMPANY.phone}
+              </a>
+              <a href={`mailto:${COMPANY.email}`}>
+                <PiEnvelopeSimpleBold aria-hidden="true" /> {COMPANY.email}
+              </a>
+              <LangSwitch lang={lang} setLang={setLang} />
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+/* =========================================================
+   Price estimator
+   ========================================================= */
+function Stepper({ label, value, setValue, min = 0, max = 10, less, more }: { label: string; value: number; setValue: (n: number) => void; min?: number; max?: number; less: string; more: string }) {
+  return (
+    <div className="dv-stepper">
+      <span className="dv-stepper__label">{label}</span>
+      <div className="dv-stepper__ctrl">
+        <button type="button" onClick={() => setValue(Math.max(min, value - 1))} disabled={value <= min} aria-label={`${label}: ${less}`}>
+          <PiMinusBold />
+        </button>
+        <output aria-live="polite">{value}</output>
+        <button type="button" onClick={() => setValue(Math.min(max, value + 1))} disabled={value >= max} aria-label={`${label}: ${more}`}>
+          <PiPlusBold />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Estimator({ t, onSend }: { t: Content; onSend: (summary: string) => void }) {
+  const [size, setSize] = useState(1);
+  const [floors, setFloors] = useState(0);
+  const [wardrobes, setWardrobes] = useState(0);
+  const [km, setKm] = useState(0);
+  const reduce = useReducedMotion();
+
+  const total = Math.round(RATES.size[size] + floors * RATES.floor + wardrobes * RATES.wardrobe + km * RATES.km);
+  const spring = useSpring(total, { stiffness: 140, damping: 22 });
+  const shown = useTransform(spring, (v) => Math.round(v));
+  useEffect(() => {
+    if (reduce) spring.jump(total);
+    else spring.set(total);
+  }, [total, spring, reduce]);
+
+  const c = t.calc;
+
+  return (
+    <div className="dv-calc">
+      <div className="dv-calc__head">
+        <h2 className="dv-calc__title">{c.title}</h2>
+        <p className="dv-calc__hint">{c.hint}</p>
+      </div>
+
+      <fieldset className="dv-calc__sizes">
+        <legend>{c.what}</legend>
+        <div className="dv-calc__options">
+          {c.sizes.map((s, i) => (
+            <label key={s.name} className={i === size ? 'is-active' : ''}>
+              <input type="radio" name="dv-size" checked={i === size} onChange={() => setSize(i)} />
+              <strong>{s.name}</strong>
+              <span>{s.sub}</span>
+            </label>
           ))}
         </div>
+      </fieldset>
 
-        <p className="pricing__note">{t.pricing.note}</p>
+      <div className="dv-calc__steppers">
+        <Stepper label={c.floors} value={floors} setValue={setFloors} less={c.less} more={c.more} />
+        <Stepper label={c.wardrobes} value={wardrobes} setValue={setWardrobes} less={c.less} more={c.more} />
+      </div>
+
+      <div className="dv-calc__range">
+        <label htmlFor="dv-km">
+          {c.km}
+          <output htmlFor="dv-km">{km} km</output>
+        </label>
+        <input
+          id="dv-km"
+          type="range"
+          min={0}
+          max={200}
+          step={5}
+          value={km}
+          onChange={(e) => setKm(Number(e.target.value))}
+          style={{ '--fill': `${(km / 200) * 100}%` } as CSSProperties}
+        />
+      </div>
+
+      <div className="dv-calc__total">
+        <p>
+          <span className="dv-calc__from">{c.from}</span>
+          <motion.span className="dv-calc__num">{shown}</motion.span>
+          <span className="dv-calc__cur">€</span>
+        </p>
+        <button type="button" className="dv-btn dv-btn--solid" onClick={() => onSend(c.summary({ size, floors, wardrobes, km, total }))}>
+          <span>{c.send}</span>
+          <span className="dv-btn__icon" aria-hidden="true">
+            <PiArrowRightBold />
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   Hero
+   ========================================================= */
+function Hero({ t, onSend }: { t: Content; onSend: (summary: string) => void }) {
+  const reduce = useReducedMotion();
+  const rise = (delay: number) =>
+    reduce
+      ? {}
+      : {
+          initial: { opacity: 0, y: 28 },
+          animate: { opacity: 1, y: 0 },
+          transition: { duration: 1, delay, ease: EASE_OUT },
+        };
+
+  return (
+    <section className="dv-hero" id="top">
+      <div className="dv-wrap dv-hero__grid">
+        <div className="dv-hero__copy">
+          <motion.p className="dv-eyebrow" {...rise(0)}>
+            {t.hero.eyebrow}
+          </motion.p>
+          <h1 className="dv-hero__title">
+            {t.hero.title.split(' ').map((word, i, words) => (
+              <Fragment key={`${word}-${i}`}>
+                <span className="dv-hero__mask">
+                  <motion.span
+                    className="dv-hero__word"
+                    initial={reduce ? false : { y: '110%' }}
+                    animate={{ y: '0%' }}
+                    transition={{ duration: 1, delay: 0.08 + i * 0.07, ease: EASE_OUT }}
+                  >
+                    {word}
+                  </motion.span>
+                </span>
+                {i < words.length - 1 && ' '}
+              </Fragment>
+            ))}
+          </h1>
+          <motion.p className="dv-hero__subtitle" {...rise(0.4)}>
+            {t.hero.subtitle}
+          </motion.p>
+          <motion.div className="dv-hero__ctas" {...rise(0.5)}>
+            <Button href="#contact" label={t.cta} onClick={go('contact')} />
+            <Button href="#services" label={t.hero.secondary} onClick={go('services')} variant="ghost" />
+          </motion.div>
+        </div>
+
+        <motion.div
+          className="dv-hero__calc"
+          initial={reduce ? false : { opacity: 0, y: 40, rotate: 2 }}
+          animate={{ opacity: 1, y: 0, rotate: 0 }}
+          transition={{ type: 'spring', stiffness: 90, damping: 18, delay: 0.35 }}
+        >
+          <Estimator t={t} onSend={onSend} />
+        </motion.div>
       </div>
     </section>
   );
 }
 
-/* ==================================================================
-   7. Testimonials
-   ================================================================== */
-
-function Testimonials() {
-  const { t } = useLanguage();
-
+/* =========================================================
+   Marquee
+   ========================================================= */
+function Marquee({ words }: { words: string[] }) {
+  const row = (hidden: boolean) => (
+    <div className="dv-marquee__row" aria-hidden={hidden || undefined}>
+      {words.map((w) => (
+        <span className="dv-marquee__item" key={w}>
+          {w}
+          <PiPackageBold aria-hidden="true" />
+        </span>
+      ))}
+    </div>
+  );
   return (
-    <section className="testimonials" aria-label={t.testimonials.title}>
-      <div className="testimonials__inner">
-        <div className="testimonials__heading">
-          <span className="eyebrow">{t.testimonials.eyebrow}</span>
-          <h2 className="section-title">{t.testimonials.title}</h2>
-        </div>
-
-        <div className="testimonials__track">
-          {t.testimonials.items.map((item) => (
-            <figure className="testimonial-card" key={item.author}>
-              <PhotoPlaceholder label={`Fotka: ${item.author}`} className="testimonial-card__photo" />
-              <blockquote>&ldquo;{item.quote}&rdquo;</blockquote>
-              <figcaption>
-                <span className="testimonial-card__author">{item.author}</span>
-                <span className="testimonial-card__role">{item.role}</span>
-              </figcaption>
-            </figure>
-          ))}
-        </div>
+    <div className="dv-marquee">
+      <div className="dv-marquee__track">
+        {row(false)}
+        {row(true)}
       </div>
-    </section>
+    </div>
   );
 }
 
-/* ==================================================================
-   8. Contact
-   ================================================================== */
-
-const COMPANY_EMAIL = 'info@movingcompany.sk';
-
-function SocialIcon({ kind }: { kind: 'facebook' | 'instagram' }) {
-  if (kind === 'facebook') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.4" />
-        <path d="M13.8 8.4h1.4V6.2h-1.7c-1.7 0-2.8 1-2.8 2.8v1.3H9.3v2.3h1.4V18h2.3v-5.4h1.6l.3-2.3h-1.9V9.4c0-.6.2-1 .8-1Z" fill="currentColor" />
-      </svg>
-    );
-  }
+/* =========================================================
+   About: statement + shipping label
+   ========================================================= */
+function About({ t }: { t: Content }) {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <circle cx="17" cy="7" r="1.1" fill="currentColor" />
-    </svg>
-  );
-}
-
-function Contact() {
-  const { t } = useLanguage();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    const bodyLines = [
-      `${t.contact.formName}: ${name}`,
-      `${t.contact.formEmail}: ${email}`,
-      `${t.contact.formPhone}: ${phone}`,
-      '',
-      message,
-    ];
-
-    const mailto =
-      `mailto:${COMPANY_EMAIL}` +
-      `?subject=${encodeURIComponent(subject || t.contact.title)}` +
-      `&body=${encodeURIComponent(bodyLines.join('\n'))}`;
-
-    window.location.href = mailto;
-  };
-
-  return (
-    <section id="contact" className="contact">
-      <div className="contact__inner">
-        <div className="contact__heading">
-          <span className="eyebrow">{t.contact.eyebrow}</span>
-          <h2 className="section-title">{t.contact.title}</h2>
-          <p className="section-subtitle">{t.contact.subtitle}</p>
-        </div>
-
-        <div className="contact__grid">
-          <form className="contact-form" onSubmit={handleSubmit}>
-            <div className="contact-form__row">
-              <label>
-                <span>{t.contact.formName}</span>
-                <input type="text" required value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
-              </label>
-              <label>
-                <span>{t.contact.formPhone}</span>
-                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" />
-              </label>
-            </div>
-            <label>
-              <span>{t.contact.formEmail}</span>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
-            </label>
-            <label>
-              <span>{t.contact.formSubject}</span>
-              <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} />
-            </label>
-            <label>
-              <span>{t.contact.formMessage}</span>
-              <textarea required rows={5} value={message} onChange={(e) => setMessage(e.target.value)} />
-            </label>
-            <button type="submit" className="btn btn--primary">{t.contact.formSubmit}</button>
-            <p className="contact-form__note">{t.contact.formNote}</p>
-          </form>
-
-          <div className="contact-info">
-            <h3>{t.contact.infoTitle}</h3>
-            <ul className="contact-info__list">
-              <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21Z" fill="none" stroke="currentColor" strokeWidth="1.4" />
-                  <circle cx="12" cy="9.5" r="2.4" fill="currentColor" />
-                </svg>
-                <span>{t.contact.address}</span>
-              </li>
-              <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M6 4h3l1.5 4-2 1.5a11 11 0 0 0 6 6L16 13.5 20 15v3a2 2 0 0 1-2 2C11.3 20 4 12.7 4 6a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" strokeWidth="1.4" />
-                </svg>
-                <a href={`tel:${t.contact.phone.replace(/\s+/g, '')}`}>{t.contact.phone}</a>
-              </li>
-              <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="1.4" />
-                  <path d="M4 6.5 12 13l8-6.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
-                </svg>
-                <a href={`mailto:${COMPANY_EMAIL}`}>{t.contact.email}</a>
-              </li>
-            </ul>
-
-            <h3>{t.contact.hoursTitle}</h3>
-            <table className="hours-table">
-              <tbody>
-                {t.contact.hours.map((row) => (
-                  <tr key={row.day}>
-                    <td>{row.day}</td>
-                    <td>{row.time}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <h3>{t.contact.socialTitle}</h3>
-            <div className="social-row">
-              <a href="#" aria-label="Facebook" className="social-row__link"><SocialIcon kind="facebook" /></a>
-              <a href="#" aria-label="Instagram" className="social-row__link"><SocialIcon kind="instagram" /></a>
-            </div>
+    <section className="dv-section dv-about" id="about">
+      <div className="dv-wrap">
+        <Reveal>
+          <h2 className="dv-statement">{t.about.title}</h2>
+        </Reveal>
+        <div className="dv-about__grid">
+          <Reveal className="dv-about__media">
+            <Photo src={PHOTOS.about} alt={t.about.title} className="dv-about__photo" fallback={<Kraft />} />
+          </Reveal>
+          <div className="dv-about__copy">
+            <Reveal>
+              <p className="dv-lead">{t.about.paragraph}</p>
+            </Reveal>
+            <Reveal className="dv-label" delay={0.1}>
+              <div className="dv-label__top" aria-hidden="true">
+                <span>SENEC</span>
+                <span className="dv-label__bars" />
+              </div>
+              <h3 className="dv-label__title">{t.about.labelTitle}</h3>
+              <ul>
+                {t.about.values.map((v) => {
+                  const Icon = v.icon;
+                  return (
+                    <li key={v.title}>
+                      <span className="dv-label__icon" aria-hidden="true">
+                        <Icon />
+                      </span>
+                      <div>
+                        <strong>{v.title}</strong>
+                        <p>{v.text}</p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Reveal>
           </div>
         </div>
       </div>
@@ -949,130 +823,455 @@ function Contact() {
   );
 }
 
-/* ==================================================================
-   9. Map
-   ================================================================== */
-
-const MAP_LAT = 48.2181;
-const MAP_LON = 17.4000;
-const MAP_BBOX = '17.383,48.206,17.417,48.230';
-
-function MapSection() {
-  const { t } = useLanguage();
-
-  const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${MAP_BBOX}&layer=mapnik&marker=${MAP_LAT},${MAP_LON}`;
-  const directionsHref = `https://www.google.com/maps/dir/?api=1&destination=${MAP_LAT},${MAP_LON}`;
-
+/* =========================================================
+   Services: bento
+   ========================================================= */
+function Services({ t }: { t: Content }) {
   return (
-    <section className="map-section" aria-label={t.map.title}>
-      <div className="map-section__inner">
-        <div className="map-section__heading">
-          <span className="eyebrow">{t.map.eyebrow}</span>
-          <h2 className="section-title">{t.map.title}</h2>
+    <section className="dv-section dv-services" id="services">
+      <div className="dv-wrap">
+        <Reveal className="dv-head">
+          <h2 className="dv-h2">{t.services.title}</h2>
+          <p className="dv-lead">{t.services.subtitle}</p>
+        </Reveal>
+        <div className="dv-bento">
+          {t.services.items.map((s, i) => {
+            const Icon = s.icon;
+            return (
+              <Reveal as="article" key={s.name} className={`dv-cell dv-cell--${i}`} delay={i * 0.06}>
+                {i === 2 && <Photo src={PHOTOS.transport} alt={s.name} className="dv-cell__photo" fallback={<Kraft icon={PiPianoKeysBold} />} />}
+                <span className="dv-cell__icon" aria-hidden="true">
+                  <Icon />
+                </span>
+                <div className="dv-cell__body">
+                  <h3>{s.name}</h3>
+                  <p>{s.desc}</p>
+                </div>
+              </Reveal>
+            );
+          })}
         </div>
-
-        <div className="map-section__frame">
-          <iframe title={t.map.title} src={mapSrc} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-        </div>
-
-        <a href={directionsHref} target="_blank" rel="noopener noreferrer" className="btn btn--ghost map-section__cta">
-          {t.map.directions}
-        </a>
       </div>
     </section>
   );
 }
 
-/* ==================================================================
-   10. Footer
-   ================================================================== */
-
-function Footer() {
-  const { t, language, setLanguage, languages } = useLanguage();
-  const year = new Date().getFullYear();
+/* =========================================================
+   Process: the van drives the route as you scroll
+   ========================================================= */
+function Process({ t }: { t: Content }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 75%', 'end 55%'] });
+  const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 24 });
+  // The van rides a full-size track, so a 0-100% translate spans the road
+  const along = useTransform(progress, [0, 1], ['0%', '100%']);
 
   return (
-    <footer className="site-footer">
-      <div className="site-footer__inner">
-        <div className="site-footer__brand">
-          <span className="site-footer__logo">Moving<span>Co.</span></span>
-          <p>{t.footer.tagline}</p>
-          <div className="lang-switch lang-switch--footer" role="group" aria-label="Jazyk / Language">
-            {languages.map((lng) => (
-              <button
-                key={lng.code}
-                type="button"
-                className={lng.code === language ? 'is-active' : ''}
-                onClick={() => setLanguage(lng.code)}
-              >
-                {lng.label}
+    <section className="dv-section dv-process" id="process">
+      <div className="dv-wrap">
+        <Reveal>
+          <h2 className="dv-h2">{t.process.title}</h2>
+        </Reveal>
+        <div className="dv-route" ref={ref}>
+          <div className="dv-route__road" aria-hidden="true">
+            <motion.span className="dv-route__done dv-route__done--x" style={reduce ? { scaleX: 1 } : { scaleX: progress }} />
+            <motion.span className="dv-route__done dv-route__done--y" style={reduce ? { scaleY: 1 } : { scaleY: progress }} />
+            <motion.span className="dv-route__track dv-route__track--x" style={{ x: reduce ? '100%' : along }}>
+              <span className="dv-route__van">
+                <PiTruckFill />
+              </span>
+            </motion.span>
+            <motion.span className="dv-route__track dv-route__track--y" style={{ y: reduce ? '100%' : along }}>
+              <span className="dv-route__van">
+                <PiTruckFill />
+              </span>
+            </motion.span>
+          </div>
+          <ol className="dv-route__stops">
+            {t.process.steps.map((step, i) => (
+              <Reveal as="li" key={step.title} className="dv-stop" delay={i * 0.08}>
+                <span className="dv-stop__pin" aria-hidden="true" />
+                <h3>{step.title}</h3>
+                <p>{step.text}</p>
+              </Reveal>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================
+   Pricing
+   ========================================================= */
+function Pricing({ t }: { t: Content }) {
+  const [active, setActive] = useState(t.pricing.categories[0].id);
+  const reduce = useReducedMotion();
+  const category = t.pricing.categories.find((c) => c.id === active) ?? t.pricing.categories[0];
+
+  return (
+    <section className="dv-section dv-pricing" id="pricing">
+      <div className="dv-wrap">
+        <Reveal className="dv-head">
+          <h2 className="dv-h2">{t.pricing.title}</h2>
+          <p className="dv-lead">{t.pricing.subtitle}</p>
+        </Reveal>
+
+        <Reveal>
+          <div className="dv-tabs" role="tablist" aria-label={t.pricing.title}>
+            {t.pricing.categories.map((c) => (
+              <button key={c.id} type="button" role="tab" id={`dv-tab-${c.id}`} aria-selected={c.id === category.id} aria-controls="dv-tabpanel" onClick={() => setActive(c.id)}>
+                {c.label}
+                {c.id === category.id && <motion.span layoutId="dv-tab-bar" className="dv-tabs__bar" transition={{ type: 'spring', stiffness: 400, damping: 34 }} />}
               </button>
             ))}
           </div>
+        </Reveal>
+
+        <div role="tabpanel" id="dv-tabpanel" aria-labelledby={`dv-tab-${category.id}`}>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.ul
+              key={category.id}
+              className="dv-prices"
+              initial={reduce ? false : { opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduce ? undefined : { opacity: 0, y: -10 }}
+              transition={{ duration: 0.35, ease: EASE_OUT }}
+            >
+              {category.items.map((item) => (
+                <li key={item.name} className="dv-price">
+                  <span className="dv-price__name">{item.name}</span>
+                  <span className="dv-price__value">{item.price}</span>
+                </li>
+              ))}
+            </motion.ul>
+          </AnimatePresence>
         </div>
 
-        <div className="site-footer__col">
-          <h4>{t.footer.quickLinksTitle}</h4>
-          <ul>
-            <li><a href="#about">{t.nav.about}</a></li>
-            <li><a href="#services">{t.nav.services}</a></li>
-            <li><a href="#pricing">{t.nav.pricing}</a></li>
-            <li><a href="#contact">{t.nav.contact}</a></li>
-          </ul>
-        </div>
+        <Reveal className="dv-pricing__foot">
+          <p>{t.pricing.note}</p>
+          <Button href="#contact" label={t.cta} onClick={go('contact')} variant="ink" />
+        </Reveal>
+      </div>
+    </section>
+  );
+}
 
-        <div className="site-footer__col">
-          <h4>{t.footer.contactTitle}</h4>
-          <ul>
-            <li>{t.contact.address}</li>
-            <li><a href={`tel:${t.contact.phone.replace(/\s+/g, '')}`}>{t.contact.phone}</a></li>
-            <li><a href={`mailto:${COMPANY_EMAIL}`}>{COMPANY_EMAIL}</a></li>
-          </ul>
-        </div>
-
-        <div className="site-footer__col">
-          <h4>{t.footer.hoursTitle}</h4>
-          <ul>
-            {t.contact.hours.map((row) => (
-              <li key={row.day}>{row.day}: {row.time}</li>
-            ))}
-          </ul>
+/* =========================================================
+   Testimonials: delivery slips
+   ========================================================= */
+function Testimonials({ t }: { t: Content }) {
+  return (
+    <section className="dv-section dv-reviews" aria-label={t.testimonials.title}>
+      <div className="dv-wrap">
+        <Reveal className="dv-head">
+          <h2 className="dv-h2">{t.testimonials.title}</h2>
+        </Reveal>
+        <div className="dv-slips">
+          {t.testimonials.items.map((item, i) => (
+            <Reveal as="figure" key={item.author} className={`dv-slip dv-slip--${i}`} delay={i * 0.1} y={40}>
+              <div className="dv-slip__stars" aria-label="5/5">
+                {Array.from({ length: 5 }, (_, s) => (
+                  <PiStarFill key={s} aria-hidden="true" />
+                ))}
+              </div>
+              <blockquote>“{item.quote}”</blockquote>
+              <figcaption>
+                <strong>{item.author}</strong>
+                <span>{item.role}</span>
+              </figcaption>
+            </Reveal>
+          ))}
         </div>
       </div>
+    </section>
+  );
+}
 
-      <div className="site-footer__bottom">
-        <span>© {year} Moving Co. {t.footer.rights}</span>
+/* =========================================================
+   Contact
+   ========================================================= */
+type FieldErrors = Partial<Record<'name' | 'email' | 'message', string>>;
+
+function Contact({ t, message, setMessage }: { t: Content; message: string; setMessage: (m: string) => void }) {
+  const c = t.contact;
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [opened, setOpened] = useState(false);
+  const today = todayIndex();
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    const name = String(data.get('name') ?? '').trim();
+    const email = String(data.get('email') ?? '').trim();
+    const phone = String(data.get('phone') ?? '').trim();
+    const subject = String(data.get('subject') ?? '').trim();
+    const text = message.trim();
+
+    const next: FieldErrors = {};
+    if (!name) next.name = c.errName;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = c.errEmail;
+    if (text.length < 5) next.message = c.errMessage;
+    setErrors(next);
+    const firstError = Object.keys(next)[0];
+    if (firstError) {
+      e.currentTarget.querySelector<HTMLElement>(`[name="${firstError}"]`)?.focus();
+      return;
+    }
+
+    const lines = [`${c.name}: ${name}`, `${c.email}: ${email}`];
+    if (phone) lines.push(`${c.phone}: ${phone}`);
+    const body = [...lines, '', text].join('\n');
+    window.location.href = `mailto:${COMPANY.email}?subject=${encodeURIComponent(subject || c.title)}&body=${encodeURIComponent(body)}`;
+    setOpened(true);
+  };
+
+  const clearError = (key: keyof FieldErrors) => () => errors[key] && setErrors((prev) => ({ ...prev, [key]: undefined }));
+
+  const errorText = (key: keyof FieldErrors) =>
+    errors[key] && (
+      <p className="dv-field__error" id={`dv-${key}-err`}>
+        <PiWarningCircleBold aria-hidden="true" />
+        {errors[key]}
+      </p>
+    );
+
+  const invalid = (key: keyof FieldErrors) => ({
+    'aria-invalid': errors[key] ? true : undefined,
+    'aria-describedby': errors[key] ? `dv-${key}-err` : undefined,
+  });
+
+  const socials = [
+    { href: COMPANY.facebook, name: 'Facebook', Icon: PiFacebookLogoBold },
+    { href: COMPANY.instagram, name: 'Instagram', Icon: PiInstagramLogoBold },
+  ].filter((s) => s.href);
+
+  return (
+    <section className="dv-section dv-contact" id="contact">
+      <div className="dv-wrap">
+        <Reveal className="dv-head">
+          <h2 className="dv-h2">{c.title}</h2>
+          <p className="dv-lead">{c.subtitle}</p>
+        </Reveal>
+
+        <div className="dv-contact__grid">
+          <Reveal className="dv-shell">
+            <form className="dv-form" onSubmit={handleSubmit} noValidate>
+              <div className="dv-form__row">
+                <div className={`dv-field ${errors.name ? 'has-error' : ''}`}>
+                  <label htmlFor="dv-name">{c.name}</label>
+                  <input id="dv-name" name="name" autoComplete="name" onInput={clearError('name')} {...invalid('name')} />
+                  {errorText('name')}
+                </div>
+                <div className="dv-field">
+                  <label htmlFor="dv-phone">
+                    {c.phone}
+                    <span className="dv-field__opt">{c.optional}</span>
+                  </label>
+                  <input id="dv-phone" name="phone" type="tel" autoComplete="tel" />
+                </div>
+              </div>
+              <div className="dv-form__row">
+                <div className={`dv-field ${errors.email ? 'has-error' : ''}`}>
+                  <label htmlFor="dv-email">{c.email}</label>
+                  <input id="dv-email" name="email" type="email" autoComplete="email" onInput={clearError('email')} {...invalid('email')} />
+                  {errorText('email')}
+                </div>
+                <div className="dv-field">
+                  <label htmlFor="dv-subject">
+                    {c.subject}
+                    <span className="dv-field__opt">{c.optional}</span>
+                  </label>
+                  <input id="dv-subject" name="subject" />
+                </div>
+              </div>
+              <div className={`dv-field ${errors.message ? 'has-error' : ''}`}>
+                <label htmlFor="dv-message">{c.message}</label>
+                <textarea
+                  id="dv-message"
+                  name="message"
+                  rows={6}
+                  value={message}
+                  onChange={(e) => {
+                    setMessage(e.target.value);
+                    clearError('message')();
+                  }}
+                  {...invalid('message')}
+                />
+                {errorText('message')}
+              </div>
+              <button type="submit" className="dv-btn dv-btn--solid dv-btn--block">
+                <span>{c.submit}</span>
+                <span className="dv-btn__icon" aria-hidden="true">
+                  <PiArrowRightBold />
+                </span>
+              </button>
+              <p className="dv-form__note" role="status">
+                {opened ? (
+                  <>
+                    {c.opened} <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.
+                  </>
+                ) : (
+                  c.note
+                )}
+              </p>
+            </form>
+          </Reveal>
+
+          <Reveal className="dv-contact__aside" delay={0.1}>
+            <h3 className="dv-h3">{c.infoTitle}</h3>
+            <ul className="dv-info">
+              <li>
+                <PiMapPinBold aria-hidden="true" />
+                <span>{c.address}</span>
+              </li>
+              <li>
+                <PiPhoneBold aria-hidden="true" />
+                <a href={COMPANY.phoneHref}>{COMPANY.phone}</a>
+              </li>
+              <li>
+                <PiEnvelopeSimpleBold aria-hidden="true" />
+                <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>
+              </li>
+            </ul>
+
+            <h3 className="dv-h3">{c.hoursTitle}</h3>
+            <dl className="dv-hours">
+              {c.hours.map((row) => {
+                const isToday = row.days.includes(today);
+                return (
+                  <div key={row.label} className={isToday ? 'is-today' : ''}>
+                    <dt>
+                      {row.label}
+                      {isToday && <span className="dv-hours__today">{c.today}</span>}
+                    </dt>
+                    <dd>{row.time}</dd>
+                  </div>
+                );
+              })}
+            </dl>
+
+            {socials.length > 0 && (
+              <div className="dv-social" aria-label={c.social}>
+                {socials.map(({ href, name, Icon }) => (
+                  <a key={name} href={href} target="_blank" rel="noopener noreferrer" aria-label={name}>
+                    <Icon />
+                  </a>
+                ))}
+              </div>
+            )}
+          </Reveal>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================
+   Map
+   ========================================================= */
+function MapSection({ t }: { t: Content }) {
+  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${MAP.bbox}&layer=mapnik&marker=${MAP.lat},${MAP.lon}`;
+  const directions = `https://www.google.com/maps/dir/?api=1&destination=${MAP.lat},${MAP.lon}`;
+  return (
+    <section className="dv-map" aria-label={t.map.title}>
+      <div className="dv-wrap dv-map__grid">
+        <Reveal className="dv-map__copy">
+          <h2 className="dv-h3 dv-map__title">{t.map.title}</h2>
+          <p>{t.contact.address}</p>
+          <a className="dv-link" href={directions} target="_blank" rel="noopener noreferrer">
+            {t.map.directions}
+            <PiArrowUpRightBold aria-hidden="true" />
+          </a>
+        </Reveal>
+        <Reveal className="dv-map__frame" delay={0.1}>
+          <iframe title={t.map.title} src={src} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================
+   Footer
+   ========================================================= */
+function Footer({ t, lang, setLang }: { t: Content; lang: Lang; setLang: (l: Lang) => void }) {
+  return (
+    <footer className="dv-footer">
+      <div className="dv-wrap">
+        <div className="dv-footer__grid">
+          <div>
+            <Logo />
+            <p className="dv-footer__tagline">{t.footer.tagline}</p>
+            <LangSwitch lang={lang} setLang={setLang} />
+          </div>
+          <nav className="dv-footer__col" aria-label={t.footer.links}>
+            <h4>{t.footer.links}</h4>
+            {NAV.map((item) => (
+              <a key={item.id} href={`#${item.id}`} onClick={go(item.id)}>
+                {t.nav[item.key]}
+              </a>
+            ))}
+          </nav>
+          <div className="dv-footer__col">
+            <h4>{t.footer.contact}</h4>
+            <span>{t.contact.address}</span>
+            <a href={COMPANY.phoneHref}>{COMPANY.phone}</a>
+            <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>
+          </div>
+        </div>
+      </div>
+      <p className="dv-footer__word" aria-hidden="true">
+        Moving Co.
+      </p>
+      <div className="dv-wrap dv-footer__bottom">
+        <span>
+          © {new Date().getFullYear()} {COMPANY.name} {t.footer.rights}
+        </span>
+        <button type="button" onClick={scrollToTop}>
+          {t.footer.top}
+        </button>
       </div>
     </footer>
   );
 }
 
-/* ==================================================================
-   11. Page composition / App
-   ================================================================== */
-
-function PageContent() {
-  return (
-    <div className="moving-site">
-      <Header />
-      <main>
-        <Hero />
-        <About />
-        <Services />
-        <Pricing />
-        <Testimonials />
-        <Contact />
-        <MapSection />
-      </main>
-      <Footer />
-    </div>
-  );
-}
-
+/* =========================================================
+   Page
+   ========================================================= */
 export default function MovingCompany() {
+  const [lang, setLang] = useStoredLang<Lang>('dodavka-lang', LANGS, 'sk');
+  const t = content[lang];
+  const [message, setMessage] = useState('');
+  useSmoothScroll();
+  useDocumentTitle(t.meta);
+
+  const sendEstimate = (summary: string) => {
+    setMessage(summary);
+    scrollToId('contact', -88);
+    window.setTimeout(() => document.getElementById('dv-name')?.focus({ preventScroll: true }), 1400);
+  };
+
   return (
-    <LanguageProvider>
-      <PageContent />
-    </LanguageProvider>
+    <div className="dv">
+      <a className="dv-skip" href="#obsah" onClick={go('obsah', () => document.getElementById('obsah')?.focus())}>
+        {t.nav.skip}
+      </a>
+      <Header t={t} lang={lang} setLang={setLang} />
+      <main id="obsah" tabIndex={-1}>
+        <Hero t={t} onSend={sendEstimate} />
+        <Marquee words={t.marquee} />
+        <About t={t} />
+        <Services t={t} />
+        <Process t={t} />
+        <Pricing t={t} />
+        <Testimonials t={t} />
+        <Contact t={t} message={message} setMessage={setMessage} />
+        <MapSection t={t} />
+      </main>
+      <Footer t={t} lang={lang} setLang={setLang} />
+    </div>
   );
 }

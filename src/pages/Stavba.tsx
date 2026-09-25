@@ -455,6 +455,7 @@ function Header({ t, lang, setLang }: { t: Content; lang: Lang; setLang: (l: Lan
           <motion.div
             id="sb-mobile-menu"
             className="sb-menu"
+            data-lenis-prevent
             initial={reduce ? { opacity: 0 } : { clipPath: 'inset(0 0 100% 0)' }}
             animate={reduce ? { opacity: 1 } : { clipPath: 'inset(0 0 0% 0)' }}
             exit={reduce ? { opacity: 0 } : { clipPath: 'inset(0 0 100% 0)' }}

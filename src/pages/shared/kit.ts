@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useEffect, useState } from 'react';
 import Lenis from 'lenis';
 import { useMotionValueEvent, useReducedMotion, useScroll } from 'framer-motion';
 
@@ -31,15 +31,20 @@ export function useSmoothScroll() {
 /** Scrolls to a section by id. Anchors can't use plain hrefs because the
  *  app runs on HashRouter, where "#contact" would be read as a route. */
 export function scrollToId(id: string, offset = -80) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (lenis) {
-    // force: the mobile menu stops Lenis while open and links close it
-    lenis.scrollTo(el, { offset, duration: 1.3, force: true });
-  } else {
-    const top = el.getBoundingClientRect().top + window.scrollY + offset;
-    window.scrollTo({ top, behavior: 'smooth' });
-  }
+  const run = () => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (lenis) {
+      lenis.scrollTo(el, { offset, duration: 1.3 });
+    } else {
+      const top = el.getBoundingClientRect().top + window.scrollY + offset;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+  };
+  // A menu link closes the menu in the same click; wait for the close to
+  // commit and restart Lenis before scrolling.
+  if (lenis?.isStopped) requestAnimationFrame(() => requestAnimationFrame(run));
+  else run();
 }
 
 export function scrollToTop() {
@@ -47,12 +52,6 @@ export function scrollToTop() {
   else window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-export function jumpTo(id: string, offset?: number) {
-  return (e: MouseEvent) => {
-    e.preventDefault();
-    scrollToId(id, offset);
-  };
-}
 
 /** True once the page has scrolled past `threshold` px. Driven by Motion's
  *  scroll value, so React only re-renders when the boolean flips. */
@@ -63,7 +62,8 @@ export function useScrolledPast(threshold: number) {
   return past;
 }
 
-/** Locks page scroll while an overlay (mobile menu) is open. */
+/** Locks page scroll while an overlay (mobile menu) is open. Lenis is
+ *  paused so the wheel can't move the page underneath. */
 export function useScrollLock(locked: boolean) {
   useEffect(() => {
     if (!locked) return;

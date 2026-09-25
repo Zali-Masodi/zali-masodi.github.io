@@ -1,748 +1,720 @@
+import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react';
+import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
+import type { IconType } from 'react-icons';
 import {
-  createContext,
-  useContext,
-  useMemo,
-  useState,
-  useEffect,
-} from 'react';
-import type { ReactNode, ReactElement, FormEvent } from 'react';
+  PiArrowRightLight,
+  PiArrowUpRightLight,
+  PiBreadLight,
+  PiCakeLight,
+  PiCookieLight,
+  PiEnvelopeSimpleLight,
+  PiFacebookLogoLight,
+  PiGrainsLight,
+  PiHandHeartLight,
+  PiInstagramLogoLight,
+  PiLeafLight,
+  PiMapPinLight,
+  PiPhoneLight,
+  PiPlantLight,
+  PiQuotesFill,
+  PiSparkleLight,
+  PiWarningCircleLight,
+} from 'react-icons/pi';
+import '@fontsource-variable/bricolage-grotesque/standard';
+import { Photo, Reveal } from './shared/components';
+import {
+  EASE_OUT,
+  scrollToId,
+  scrollToTop,
+  todayIndex,
+  useDocumentTitle,
+  useScrollLock,
+  useScrolledPast,
+  useSmoothScroll,
+  useStoredLang,
+} from './shared/kit';
 import './Pekaren.css';
 
-/* ==================================================================
-   1. i18n — types, dictionaries, provider, hook
-   ================================================================== */
+/* =========================================================
+   Bakery details
+   ========================================================= */
+const BAKERY = {
+  name: 'Pekáreň',
+  email: 'info@pekaren.sk',
+  phone: '+421 905 123 456',
+  phoneHref: 'tel:+421905123456',
+  /* Fill in real profile URLs to show the icons; empty ones stay hidden. */
+  facebook: '',
+  instagram: '',
+};
 
-type IconKey = 'wheat' | 'croissant' | 'cake' | 'cookie' | 'pretzel';
+const MAP = {
+  lat: 48.4353,
+  lon: 17.0173,
+  bbox: '17.001,48.424,17.034,48.447',
+};
 
-interface CategoryItem {
-  icon: IconKey;
-  name: string;
-  desc: string;
-}
+/* Opening hours per weekday (Mon = 0) in minutes after midnight. */
+const SCHEDULE: ([number, number] | null)[] = [
+  [360, 1080],
+  [360, 1080],
+  [360, 1080],
+  [360, 1080],
+  [360, 1080],
+  [420, 720],
+  null,
+];
 
-interface ValueItem {
-  title: string;
-  text: string;
-}
+/* Real photos: drop files into public/pekaren/ and fill in the paths,
+   e.g. hero: '/pekaren/vitrina.jpg'. Empty slots show the indigo cloth. */
+const PHOTOS: { hero?: string; about?: string; categories: (string | undefined)[] } = {
+  categories: [],
+};
 
-interface PricingLine {
-  name: string;
-  price: string;
-}
+/* =========================================================
+   Content
+   ========================================================= */
+type Lang = 'sk' | 'en';
+const LANGS = ['sk', 'en'] as const;
 
-interface PricingCategory {
-  id: string;
-  label: string;
-  items: PricingLine[];
-}
-
-interface TestimonialItem {
-  quote: string;
-  author: string;
-  role: string;
-}
-
-interface HoursRow {
-  day: string;
-  time: string;
-}
-
-interface Translations {
-  meta: {
-    title: string;
-  };
-  nav: {
-    home: string;
-    about: string;
-    categories: string;
-    pricing: string;
-    contact: string;
-    openMenu: string;
-    closeMenu: string;
-  };
-  hero: {
-    eyebrow: string;
-    title: string;
-    subtitle: string;
-    ctaMenu: string;
-    ctaOrder: string;
-    badgeCircleText: string;
-    badgeCenter: string;
-  };
-  about: {
-    eyebrow: string;
-    title: string;
-    paragraph: string;
-    values: ValueItem[];
-  };
-  categories: {
-    eyebrow: string;
-    title: string;
-    subtitle: string;
-    items: CategoryItem[];
-  };
-  pricing: {
-    eyebrow: string;
-    title: string;
-    subtitle: string;
-    note: string;
-    categories: PricingCategory[];
-  };
-  testimonials: {
-    eyebrow: string;
-    title: string;
-    items: TestimonialItem[];
-  };
+interface Content {
+  meta: string;
+  nav: { about: string; categories: string; pricing: string; contact: string; menu: string; close: string; skip: string };
+  cta: string;
+  status: { open: (until: string) => string; opensToday: (at: string) => string; opensTomorrow: (at: string) => string; opensOn: (day: number, at: string) => string };
+  hero: { title: [string, string]; accent: string; subtitle: string; ctaMenu: string; stamp: string };
+  marquee: string[];
+  about: { title: string; paragraph: string; values: { icon: IconType; title: string; text: string }[] };
+  categories: { title: string; subtitle: string; items: { icon: IconType; name: string; desc: string }[] };
+  pricing: { title: string; subtitle: string; note: string; categories: { id: string; label: string; items: { name: string; price: string }[] }[] };
+  testimonials: { title: string; prev: string; next: string; items: { quote: string; author: string; role: string }[] };
   contact: {
-    eyebrow: string;
     title: string;
     subtitle: string;
-    formName: string;
-    formEmail: string;
-    formSubject: string;
-    formMessage: string;
-    formSubmit: string;
-    formNote: string;
+    name: string;
+    email: string;
+    subject: string;
+    message: string;
+    optional: string;
+    submit: string;
+    note: string;
+    opened: string;
+    errName: string;
+    errEmail: string;
+    errMessage: string;
     infoTitle: string;
     address: string;
-    phone: string;
-    email: string;
     hoursTitle: string;
-    hours: HoursRow[];
-    socialTitle: string;
+    today: string;
+    hours: { days: number[]; label: string; time: string }[];
+    social: string;
   };
-  map: {
-    eyebrow: string;
-    title: string;
-    directions: string;
-  };
-  footer: {
-    tagline: string;
-    quickLinksTitle: string;
-    contactTitle: string;
-    hoursTitle: string;
-    rights: string;
-  };
+  map: { title: string; directions: string };
+  footer: { tagline: string; links: string; contact: string; hours: string; rights: string; top: string };
 }
 
-const sk: Translations = {
-  meta: { title: 'Pekáreň — Rodinná pekáreň' },
-  nav: {
-    home: 'Domov',
-    about: 'Náš príbeh',
-    categories: 'Ponuka',
-    pricing: 'Cenník',
-    contact: 'Kontakt',
-    openMenu: 'Otvoriť menu',
-    closeMenu: 'Zavrieť menu',
+const SK_DAYS_ON = ['v pondelok', 'v utorok', 'v stredu', 'vo štvrtok', 'v piatok', 'v sobotu', 'v nedeľu'];
+const EN_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const content: Record<Lang, Content> = {
+  sk: {
+    meta: 'Pekáreň | Rodinná pekáreň v Malackách od roku 1998',
+    nav: { about: 'Náš príbeh', categories: 'Ponuka', pricing: 'Cenník', contact: 'Kontakt', menu: 'Otvoriť menu', close: 'Zavrieť menu', skip: 'Preskočiť na obsah' },
+    cta: 'Napísať nám',
+    status: {
+      open: (until) => `Práve máme otvorené, do ${until}`,
+      opensToday: (at) => `Teraz zatvorené, otvárame dnes o ${at}`,
+      opensTomorrow: (at) => `Teraz zatvorené, otvárame zajtra o ${at}`,
+      opensOn: (day, at) => `Teraz zatvorené, otvárame ${SK_DAYS_ON[day]} o ${at}`,
+    },
+    hero: {
+      title: ['Chlieb, ako ho', 'piekla'],
+      accent: 'stará mama.',
+      subtitle: 'Každé ráno od štvrtej pečieme kváskový chlieb, pečivo a koláče z múky od miestnych mlynárov.',
+      ctaMenu: 'Pozrieť ponuku',
+      stamp: 'RODINNÁ PEKÁREŇ ✳ OD ROKU 1998 ✳ ČERSTVO KAŽDÉ RÁNO ✳ ',
+    },
+    marquee: ['Kváskový chlieb', 'Maslové croissanty', 'Makové slimáky', 'Tvarohové koláče', 'Ražný chlieb', 'Linecké pečivo'],
+    about: {
+      title: 'Tri generácie v jednej pekárni',
+      paragraph:
+        'Pekáreň založili v roku 1998 starí rodičia Anna a Jozef vo dvore rodinného domu. Dnes ju vedie ich dcéra Mária so svojimi deťmi. Recept na kvások sa za tie roky nezmenil ani o gram.',
+      values: [
+        { icon: PiPlantLight, title: 'Kváskové cesto', text: 'Náš kváskový základ má viac ako 20 rokov a kŕmime ho každý jeden deň.' },
+        { icon: PiLeafLight, title: 'Miestne suroviny', text: 'Múku, vajcia aj maslo nakupujeme od farmárov z okolia Malaciek.' },
+        { icon: PiHandHeartLight, title: 'Bez zbytočností', text: 'Žiadne zlepšovadlá ani umelé arómy. Len múka, voda, soľ a čas.' },
+      ],
+    },
+    categories: {
+      title: 'Čo nájdete na pulte',
+      subtitle: 'Pečieme v malých dávkach niekoľkokrát denne, aby bolo pečivo vždy čerstvé.',
+      items: [
+        { icon: PiGrainsLight, name: 'Chlieb', desc: 'Kváskový, ražný, špaldový aj bezlepkový.' },
+        { icon: PiBreadLight, name: 'Pečivo', desc: 'Croissanty, žemle a sladké slimáky.' },
+        { icon: PiCakeLight, name: 'Koláče a torty', desc: 'Tradičné koláče aj torty na objednávku.' },
+        { icon: PiCookieLight, name: 'Sušienky', desc: 'Maslové, linecké a ovsené s medom.' },
+        { icon: PiSparkleLight, name: 'Sezónne špeciality', desc: 'Vianočka, mazance a veľkonočné dobroty podľa sezóny.' },
+      ],
+    },
+    pricing: {
+      title: 'Cenník',
+      subtitle: 'Orientačné ceny. Aktuálnu ponuku nájdete priamo v pekárni.',
+      note: 'Torty na mieru cenujeme podľa veľkosti a náplne. Stačí nám napísať.',
+      categories: [
+        {
+          id: 'bread',
+          label: 'Chlieb',
+          items: [
+            { name: 'Kváskový chlieb 800 g', price: '3,20 €' },
+            { name: 'Ražný chlieb 500 g', price: '2,60 €' },
+            { name: 'Špaldový chlieb 600 g', price: '3,80 €' },
+            { name: 'Bezlepkový chlieb 400 g', price: '4,20 €' },
+          ],
+        },
+        {
+          id: 'pastries',
+          label: 'Pečivo',
+          items: [
+            { name: 'Croissant maslový', price: '1,60 €' },
+            { name: 'Žemľa', price: '0,45 €' },
+            { name: 'Slimák s makom', price: '1,20 €' },
+            { name: 'Slimák s orechmi', price: '1,20 €' },
+          ],
+        },
+        {
+          id: 'cakes',
+          label: 'Koláče',
+          items: [
+            { name: 'Tvarohový koláč (kus)', price: '1,80 €' },
+            { name: 'Makový koláč (kus)', price: '1,80 €' },
+            { name: 'Jablková štrúdľa (kus)', price: '2,10 €' },
+            { name: 'Torta na objednávku', price: 'od 25,00 €' },
+          ],
+        },
+        {
+          id: 'cookies',
+          label: 'Sušienky',
+          items: [
+            { name: 'Linecké pečivo (10 ks)', price: '4,50 €' },
+            { name: 'Ovsené sušienky s medom (10 ks)', price: '4,00 €' },
+            { name: 'Maslové keksy (10 ks)', price: '4,20 €' },
+          ],
+        },
+      ],
+    },
+    testimonials: {
+      title: 'Chuť, na ktorú sa dá spoľahnúť',
+      prev: 'Predchádzajúca recenzia',
+      next: 'Ďalšia recenzia',
+      items: [
+        { quote: 'Chlieb tu kupujem už desať rokov a chuť je stále rovnaká. Presne taká, akú si pamätám od babky.', author: 'Jana K.', role: 'Stála zákazníčka' },
+        { quote: 'Torta na svadbu bola nielen krásna, ale aj naozaj chutná. Odporúčam každému, kto hľadá niečo výnimočné.', author: 'Peter M.', role: 'Svadobný hosť' },
+        { quote: 'Najlepšie croissanty v meste, bodka. Chodíme sem každú nedeľu ráno.', author: 'Zuzana a Tomáš', role: 'Susedia z Hlavnej ulice' },
+      ],
+    },
+    contact: {
+      title: 'Zastavte sa alebo nám napíšte',
+      subtitle: 'Radi zodpovieme otázky ohľadom objednávok, alergénov aj veľkých osláv.',
+      name: 'Meno',
+      email: 'Váš e-mail',
+      subject: 'Predmet',
+      message: 'Správa',
+      optional: 'nepovinné',
+      submit: 'Odoslať správu',
+      note: 'Formulár otvorí váš e-mailový program s pripravenou správou. Nič neposielame za vás.',
+      opened: 'Otvorili sme váš e-mailový program. Ak sa neotvoril, napíšte nám na',
+      errName: 'Napíšte nám, ako vás oslovovať.',
+      errEmail: 'Zadajte e-mail v tvare meno@domena.sk.',
+      errMessage: 'Správa je zatiaľ prázdna.',
+      infoTitle: 'Kontaktné údaje',
+      address: 'Hlavná 25, 901 01 Malacky',
+      hoursTitle: 'Otváracie hodiny',
+      today: 'dnes',
+      hours: [
+        { days: [0, 1, 2, 3, 4], label: 'Pondelok-Piatok', time: '6:00-18:00' },
+        { days: [5], label: 'Sobota', time: '7:00-12:00' },
+        { days: [6], label: 'Nedeľa', time: 'Zatvorené' },
+      ],
+      social: 'Sledujte nás',
+    },
+    map: { title: 'Pekáreň v centre Malaciek', directions: 'Navigovať v Google Maps' },
+    footer: { tagline: 'Poctivý chlieb od roku 1998.', links: 'Rýchle odkazy', contact: 'Kontakt', hours: 'Otváracie hodiny', rights: 'Všetky práva vyhradené.', top: 'Späť hore' },
   },
-  hero: {
-    eyebrow: 'Rodinná pekáreň v Malackách',
-    title: 'Chlieb, ako ho piekla stará mama.',
-    subtitle:
-      'Každé ráno od štvrtej pečieme kváskový chlieb, čerstvé pečivo a koláče z múky od miestnych mlynárov. Bez zbytočností — len poctivé suroviny a čas.',
-    ctaMenu: 'Pozrieť ponuku',
-    ctaOrder: 'Napísať nám',
-    badgeCircleText: 'RODINNÁ PEKÁREŇ • OD ROKU 1998 • ČERSTVO KAŽDÉ RÁNO • ',
-    badgeCenter: 'EST. 1998',
-  },
-  about: {
-    eyebrow: 'Náš príbeh',
-    title: 'Tri generácie v jednej pekárni',
-    paragraph:
-      'Pekáreň založili v roku 1998 starí rodičia Anna a Jozef vo dvore rodinného domu. Dnes ju vedie ich dcéra Mária spolu so svojimi deťmi — recept na kvások sa však za tie roky nezmenil ani o gram.',
-    values: [
-      {
-        title: 'Kváskové cesto',
-        text: 'Náš kváskový základ má viac ako 20 rokov a kŕmime ho každý jeden deň.',
-      },
-      {
-        title: 'Miestne suroviny',
-        text: 'Múku, vajcia aj maslo nakupujeme od farmárov z okolia Malaciek.',
-      },
-      {
-        title: 'Bez zbytočností',
-        text: 'Žiadne zlepšovadlá ani umelé arómy — len múka, voda, soľ a čas.',
-      },
-    ],
-  },
-  categories: {
-    eyebrow: 'Naša ponuka',
-    title: 'Čo nájdete na pulte',
-    subtitle: 'Pečieme v malých dávkach niekoľkokrát denne, aby bolo pečivo vždy čerstvé.',
-    items: [
-      { icon: 'wheat', name: 'Chlieb', desc: 'Kváskový, ražný, špaldový aj bezlepkový.' },
-      { icon: 'croissant', name: 'Pečivo', desc: 'Croissanty, žemle, sladké slimáky.' },
-      { icon: 'cake', name: 'Koláče a torty', desc: 'Tradičné koláče aj torty na objednávku.' },
-      { icon: 'cookie', name: 'Sušienky', desc: 'Maslové, linecké, ovsené s medom.' },
-      {
-        icon: 'pretzel',
-        name: 'Sezónne špeciality',
-        desc: 'Vianočka, mazance a veľkonočné korbáče podľa sezóny.',
-      },
-    ],
-  },
-  pricing: {
-    eyebrow: 'Cenník',
-    title: 'Ceny pečiva',
-    subtitle: 'Orientačný cenník — aktuálnu ponuku nájdete priamo v pekárni.',
-    note: 'Torty na mieru cenujeme individuálne podľa veľkosti a náplne — stačí napísať.',
-    categories: [
-      {
-        id: 'bread',
-        label: 'Chlieb',
-        items: [
-          { name: 'Kváskový chlieb 800 g', price: '3,20 €' },
-          { name: 'Ražný chlieb 500 g', price: '2,60 €' },
-          { name: 'Špaldový chlieb 600 g', price: '3,80 €' },
-          { name: 'Bezlepkový chlieb 400 g', price: '4,20 €' },
-        ],
-      },
-      {
-        id: 'pastries',
-        label: 'Pečivo',
-        items: [
-          { name: 'Croissant maslový', price: '1,60 €' },
-          { name: 'Žemľa', price: '0,45 €' },
-          { name: 'Slimák s makom', price: '1,20 €' },
-          { name: 'Slimák s orechmi', price: '1,20 €' },
-        ],
-      },
-      {
-        id: 'cakes',
-        label: 'Koláče',
-        items: [
-          { name: 'Tvarohový koláč (kus)', price: '1,80 €' },
-          { name: 'Makový koláč (kus)', price: '1,80 €' },
-          { name: 'Jablkový štrúdľa (kus)', price: '2,10 €' },
-          { name: 'Torta na objednávku', price: 'od 25,00 €' },
-        ],
-      },
-      {
-        id: 'cookies',
-        label: 'Sušienky',
-        items: [
-          { name: 'Linecké pečivo (10 ks)', price: '4,50 €' },
-          { name: 'Ovsené sušienky s medom (10 ks)', price: '4,00 €' },
-          { name: 'Maslové keksy (10 ks)', price: '4,20 €' },
-        ],
-      },
-    ],
-  },
-  testimonials: {
-    eyebrow: 'Čo hovoria zákazníci',
-    title: 'Chuť, na ktorú sa dá spoľahnúť',
-    items: [
-      {
-        quote:
-          'Chlieb tu kupujem už desať rokov a chuť je stále rovnaká — presne taká, akú si pamätám od babky.',
-        author: 'Jana K.',
-        role: 'Stála zákazníčka',
-      },
-      {
-        quote:
-          'Torta na svadbu bola nielen krásna, ale aj naozaj chutná. Odporúčam každému, kto hľadá niečo výnimočné.',
-        author: 'Peter M.',
-        role: 'Svadobný hosť',
-      },
-      {
-        quote: 'Najlepšie croissanty v meste, bod. Chodíme sem každú nedeľu ráno.',
-        author: 'Zuzana a Tomáš',
-        role: 'Susedia z Hlavnej ulice',
-      },
-    ],
-  },
-  contact: {
-    eyebrow: 'Kontakt',
-    title: 'Zastavte sa alebo nám napíšte',
-    subtitle: 'Radi zodpovieme otázky ohľadom objednávok, alergénov aj veľkých osláv.',
-    formName: 'Meno',
-    formEmail: 'Váš e-mail',
-    formSubject: 'Predmet',
-    formMessage: 'Správa',
-    formSubmit: 'Otvoriť v e-mailovej aplikácii',
-    formNote:
-      'Po odoslaní sa otvorí vaša e-mailová aplikácia s predvyplnenou správou — nič neposielame za vás.',
-    infoTitle: 'Kontaktné údaje',
-    address: 'Hlavná 25, 901 01 Malacky',
-    phone: '+421 905 123 456',
-    email: 'info@pekaren.sk',
-    hoursTitle: 'Otváracie hodiny',
-    hours: [
-      { day: 'Pondelok – Piatok', time: '6:00 – 18:00' },
-      { day: 'Sobota', time: '7:00 – 12:00' },
-      { day: 'Nedeľa', time: 'Zatvorené' },
-    ],
-    socialTitle: 'Sledujte nás',
-  },
-  map: {
-    eyebrow: 'Kde nás nájdete',
-    title: 'Pekáreň v centre Malaciek',
-    directions: 'Otvoriť trasu v Google Maps',
-  },
-  footer: {
-    tagline: 'Poctivý chlieb od roku 1998.',
-    quickLinksTitle: 'Rýchle odkazy',
-    contactTitle: 'Kontakt',
-    hoursTitle: 'Otváracie hodiny',
-    rights: 'Všetky práva vyhradené.',
+  en: {
+    meta: 'Pekáreň | Family bakery in Malacky since 1998',
+    nav: { about: 'Our story', categories: 'Menu', pricing: 'Prices', contact: 'Contact', menu: 'Open menu', close: 'Close menu', skip: 'Skip to content' },
+    cta: 'Write to us',
+    status: {
+      open: (until) => `Open right now, until ${until}`,
+      opensToday: (at) => `Closed now, opening today at ${at}`,
+      opensTomorrow: (at) => `Closed now, opening tomorrow at ${at}`,
+      opensOn: (day, at) => `Closed now, opening ${EN_DAYS[day]} at ${at}`,
+    },
+    hero: {
+      title: ['Bread the way', ''],
+      accent: 'grandma baked it.',
+      subtitle: 'Every morning from 4am we bake sourdough, pastries and cakes with flour from local mills.',
+      ctaMenu: 'See what we bake',
+      stamp: 'FAMILY BAKERY ✳ SINCE 1998 ✳ FRESH EVERY MORNING ✳ ',
+    },
+    marquee: ['Sourdough loaves', 'Butter croissants', 'Poppy seed swirls', 'Curd cheese cake', 'Rye bread', 'Linzer cookies'],
+    about: {
+      title: 'Three generations, one bakery',
+      paragraph:
+        'Pekáreň was founded in 1998 by grandparents Anna and Jozef in the yard of the family house. Today their daughter Mária runs it with her children. The sourdough recipe hasn’t changed by a single gram.',
+      values: [
+        { icon: PiPlantLight, title: 'Sourdough starter', text: 'Our starter is over 20 years old and we feed it every single day.' },
+        { icon: PiLeafLight, title: 'Local ingredients', text: 'Flour, eggs and butter all come from farmers around Malacky.' },
+        { icon: PiHandHeartLight, title: 'Nothing extra', text: 'No improvers, no artificial flavourings. Just flour, water, salt and time.' },
+      ],
+    },
+    categories: {
+      title: 'What you’ll find on the counter',
+      subtitle: 'Baked in small batches several times a day, so it’s always fresh.',
+      items: [
+        { icon: PiGrainsLight, name: 'Bread', desc: 'Sourdough, rye, spelt and gluten-free loaves.' },
+        { icon: PiBreadLight, name: 'Pastries', desc: 'Croissants, rolls and sweet swirl buns.' },
+        { icon: PiCakeLight, name: 'Cakes', desc: 'Traditional cakes and made-to-order celebration cakes.' },
+        { icon: PiCookieLight, name: 'Cookies', desc: 'Butter, linzer and honey-oat cookies.' },
+        { icon: PiSparkleLight, name: 'Seasonal specials', desc: 'Christmas braids, Easter breads and treats made for the season.' },
+      ],
+    },
+    pricing: {
+      title: 'Prices',
+      subtitle: 'A guide price list. See the full daily selection in store.',
+      note: 'Custom cakes are priced by size and filling. Just get in touch.',
+      categories: [
+        {
+          id: 'bread',
+          label: 'Bread',
+          items: [
+            { name: 'Sourdough loaf 800 g', price: '€3.20' },
+            { name: 'Rye loaf 500 g', price: '€2.60' },
+            { name: 'Spelt loaf 600 g', price: '€3.80' },
+            { name: 'Gluten-free loaf 400 g', price: '€4.20' },
+          ],
+        },
+        {
+          id: 'pastries',
+          label: 'Pastries',
+          items: [
+            { name: 'Butter croissant', price: '€1.60' },
+            { name: 'Plain roll', price: '€0.45' },
+            { name: 'Poppy seed swirl', price: '€1.20' },
+            { name: 'Walnut swirl', price: '€1.20' },
+          ],
+        },
+        {
+          id: 'cakes',
+          label: 'Cakes',
+          items: [
+            { name: 'Curd cheese cake (slice)', price: '€1.80' },
+            { name: 'Poppy seed cake (slice)', price: '€1.80' },
+            { name: 'Apple strudel (slice)', price: '€2.10' },
+            { name: 'Custom celebration cake', price: 'from €25.00' },
+          ],
+        },
+        {
+          id: 'cookies',
+          label: 'Cookies',
+          items: [
+            { name: 'Linzer cookies (10 pcs)', price: '€4.50' },
+            { name: 'Honey-oat cookies (10 pcs)', price: '€4.00' },
+            { name: 'Butter biscuits (10 pcs)', price: '€4.20' },
+          ],
+        },
+      ],
+    },
+    testimonials: {
+      title: 'A taste you can rely on',
+      prev: 'Previous review',
+      next: 'Next review',
+      items: [
+        { quote: 'I’ve been buying bread here for ten years and it still tastes exactly like my grandmother’s.', author: 'Jana K.', role: 'Regular customer' },
+        { quote: 'Our wedding cake was beautiful and genuinely delicious. I’d recommend them to anyone looking for something special.', author: 'Peter M.', role: 'Wedding guest' },
+        { quote: 'Best croissants in town, full stop. We come every Sunday morning.', author: 'Zuzana & Tomáš', role: 'Neighbours from Hlavná street' },
+      ],
+    },
+    contact: {
+      title: 'Stop by or send us a note',
+      subtitle: 'Happy to help with orders, allergens or planning a bigger celebration.',
+      name: 'Name',
+      email: 'Your email',
+      subject: 'Subject',
+      message: 'Message',
+      optional: 'optional',
+      submit: 'Send message',
+      note: 'The form opens your own email app with the message ready. We never send anything for you.',
+      opened: "We've opened your email app. If nothing happened, write to us at",
+      errName: 'Tell us what to call you.',
+      errEmail: 'Enter an email like name@domain.com.',
+      errMessage: 'The message is still empty.',
+      infoTitle: 'Contact details',
+      address: 'Hlavná 25, 901 01 Malacky, Slovakia',
+      hoursTitle: 'Opening hours',
+      today: 'today',
+      hours: [
+        { days: [0, 1, 2, 3, 4], label: 'Monday-Friday', time: '6:00-18:00' },
+        { days: [5], label: 'Saturday', time: '7:00-12:00' },
+        { days: [6], label: 'Sunday', time: 'Closed' },
+      ],
+      social: 'Follow us',
+    },
+    map: { title: 'A bakery in the heart of Malacky', directions: 'Directions in Google Maps' },
+    footer: { tagline: 'Honest bread since 1998.', links: 'Quick links', contact: 'Contact', hours: 'Opening hours', rights: 'All rights reserved.', top: 'Back to top' },
   },
 };
 
-const en: Translations = {
-  meta: { title: 'Pekáreň — Family Bakery' },
-  nav: {
-    home: 'Home',
-    about: 'Our story',
-    categories: 'Menu',
-    pricing: 'Prices',
-    contact: 'Contact',
-    openMenu: 'Open menu',
-    closeMenu: 'Close menu',
-  },
-  hero: {
-    eyebrow: 'Family bakery in Malacky',
-    title: 'Bread the way grandma baked it.',
-    subtitle:
-      'Every morning from 4am we bake sourdough bread, fresh pastries and cakes with flour from local mills. No shortcuts — just honest ingredients and time.',
-    ctaMenu: 'See what we bake',
-    ctaOrder: 'Write to us',
-    badgeCircleText: 'FAMILY BAKERY • SINCE 1998 • FRESH EVERY MORNING • ',
-    badgeCenter: 'EST. 1998',
-  },
-  about: {
-    eyebrow: 'Our story',
-    title: 'Three generations, one bakery',
-    paragraph:
-      'Pekáreň was founded in 1998 by grandparents Anna and Jozef in the yard of the family house. Today it is run by their daughter Mária and her children — the sourdough recipe hasn\u2019t changed by a single gram.',
-    values: [
-      {
-        title: 'Sourdough starter',
-        text: 'Our starter is over 20 years old and we feed it every single day.',
-      },
-      {
-        title: 'Local ingredients',
-        text: 'Flour, eggs and butter all come from farmers around Malacky.',
-      },
-      {
-        title: 'Nothing extra',
-        text: 'No improvers, no artificial flavourings — just flour, water, salt and time.',
-      },
-    ],
-  },
-  categories: {
-    eyebrow: 'What we bake',
-    title: 'What you\u2019ll find on the counter',
-    subtitle: 'Baked in small batches several times a day, so it\u2019s always fresh.',
-    items: [
-      { icon: 'wheat', name: 'Bread', desc: 'Sourdough, rye, spelt and gluten-free loaves.' },
-      { icon: 'croissant', name: 'Pastries', desc: 'Croissants, rolls, sweet swirl buns.' },
-      { icon: 'cake', name: 'Cakes', desc: 'Traditional cakes and made-to-order celebration cakes.' },
-      { icon: 'cookie', name: 'Cookies', desc: 'Butter, linzer and honey-oat cookies.' },
-      {
-        icon: 'pretzel',
-        name: 'Seasonal specials',
-        desc: 'Christmas braids, Easter breads and treats made for the season.',
-      },
-    ],
-  },
-  pricing: {
-    eyebrow: 'Price list',
-    title: 'What things cost',
-    subtitle: 'A guide price list — see the full daily selection in store.',
-    note: 'Custom cakes are priced individually by size and filling — just get in touch.',
-    categories: [
-      {
-        id: 'bread',
-        label: 'Bread',
-        items: [
-          { name: 'Sourdough loaf 800 g', price: '€3.20' },
-          { name: 'Rye loaf 500 g', price: '€2.60' },
-          { name: 'Spelt loaf 600 g', price: '€3.80' },
-          { name: 'Gluten-free loaf 400 g', price: '€4.20' },
-        ],
-      },
-      {
-        id: 'pastries',
-        label: 'Pastries',
-        items: [
-          { name: 'Butter croissant', price: '€1.60' },
-          { name: 'Plain roll', price: '€0.45' },
-          { name: 'Poppy seed swirl', price: '€1.20' },
-          { name: 'Walnut swirl', price: '€1.20' },
-        ],
-      },
-      {
-        id: 'cakes',
-        label: 'Cakes',
-        items: [
-          { name: 'Curd cheese cake (slice)', price: '€1.80' },
-          { name: 'Poppy seed cake (slice)', price: '€1.80' },
-          { name: 'Apple strudel (slice)', price: '€2.10' },
-          { name: 'Custom celebration cake', price: 'from €25.00' },
-        ],
-      },
-      {
-        id: 'cookies',
-        label: 'Cookies',
-        items: [
-          { name: 'Linzer cookies (10 pcs)', price: '€4.50' },
-          { name: 'Honey-oat cookies (10 pcs)', price: '€4.00' },
-          { name: 'Butter biscuits (10 pcs)', price: '€4.20' },
-        ],
-      },
-    ],
-  },
-  testimonials: {
-    eyebrow: 'What people say',
-    title: 'A taste you can rely on',
-    items: [
-      {
-        quote:
-          'I\u2019ve been buying bread here for ten years and it still tastes exactly like I remember from my grandmother\u2019s kitchen.',
-        author: 'Jana K.',
-        role: 'Regular customer',
-      },
-      {
-        quote:
-          'Our wedding cake was beautiful and genuinely delicious. I\u2019d recommend them to anyone looking for something special.',
-        author: 'Peter M.',
-        role: 'Wedding guest',
-      },
-      {
-        quote: 'Best croissants in town, full stop. We come every Sunday morning.',
-        author: 'Zuzana & Tomáš',
-        role: 'Neighbours from Hlavná street',
-      },
-    ],
-  },
-  contact: {
-    eyebrow: 'Contact',
-    title: 'Stop by or send us a note',
-    subtitle: 'Happy to help with orders, allergens or planning a bigger celebration.',
-    formName: 'Name',
-    formEmail: 'Your email',
-    formSubject: 'Subject',
-    formMessage: 'Message',
-    formSubmit: 'Open in email app',
-    formNote:
-      'Sending this opens your own email app with the message pre-filled — we never send anything for you.',
-    infoTitle: 'Contact details',
-    address: 'Hlavná 25, 901 01 Malacky, Slovakia',
-    phone: '+421 905 123 456',
-    email: 'info@pekaren.sk',
-    hoursTitle: 'Opening hours',
-    hours: [
-      { day: 'Monday – Friday', time: '6:00 – 18:00' },
-      { day: 'Saturday', time: '7:00 – 12:00' },
-      { day: 'Sunday', time: 'Closed' },
-    ],
-    socialTitle: 'Follow us',
-  },
-  map: {
-    eyebrow: 'Find us',
-    title: 'A bakery in the heart of Malacky',
-    directions: 'Open directions in Google Maps',
-  },
-  footer: {
-    tagline: 'Honest bread since 1998.',
-    quickLinksTitle: 'Quick links',
-    contactTitle: 'Contact',
-    hoursTitle: 'Opening hours',
-    rights: 'All rights reserved.',
-  },
-};
-
-const languages: { code: string; label: string }[] = [
-  { code: 'sk', label: 'SK' },
-  { code: 'en', label: 'EN' },
+type NavKey = 'about' | 'categories' | 'pricing' | 'contact';
+const NAV: { id: string; key: NavKey }[] = [
+  { id: 'about', key: 'about' },
+  { id: 'categories', key: 'categories' },
+  { id: 'pricing', key: 'pricing' },
+  { id: 'contact', key: 'contact' },
 ];
 
-const dictionaries: Record<string, Translations> = { sk, en };
-
-const DEFAULT_LANGUAGE = 'sk';
-const STORAGE_KEY = 'pekaren-lang';
-
-interface LanguageContextValue {
-  language: string;
-  setLanguage: (code: string) => void;
-  t: Translations;
-  languages: { code: string; label: string }[];
-}
-
-const LanguageContext = createContext<LanguageContextValue | undefined>(undefined);
-
-function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<string>(() => {
-    if (typeof window === 'undefined') return DEFAULT_LANGUAGE;
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored && dictionaries[stored]) return stored;
-    const browserLang = window.navigator.language.slice(0, 2);
-    return dictionaries[browserLang] ? browserLang : DEFAULT_LANGUAGE;
-  });
-
-  useEffect(() => {
-    document.documentElement.lang = language;
-    window.localStorage.setItem(STORAGE_KEY, language);
-  }, [language]);
-
-  const setLanguage = (code: string) => {
-    if (dictionaries[code]) setLanguageState(code);
+/* =========================================================
+   Helpers
+   ========================================================= */
+function go(id: string, after?: () => void) {
+  return (e: MouseEvent) => {
+    e.preventDefault();
+    after?.();
+    scrollToId(id, -96);
   };
-
-  const value = useMemo<LanguageContextValue>(
-    () => ({
-      language,
-      setLanguage,
-      t: dictionaries[language] ?? dictionaries[DEFAULT_LANGUAGE],
-      languages,
-    }),
-    [language],
-  );
-
-  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 
-function useLanguage(): LanguageContextValue {
-  const ctx = useContext(LanguageContext);
-  if (!ctx) throw new Error('useLanguage must be used within a LanguageProvider');
-  return ctx;
-}
+const clock = (mins: number) => `${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, '0')}`;
 
-/* ==================================================================
-   2. Header
-   ================================================================== */
-
-const NAV_ITEMS: { key: 'about' | 'categories' | 'pricing' | 'contact'; href: string }[] = [
-  { key: 'about', href: '#about' },
-  { key: 'categories', href: '#categories' },
-  { key: 'pricing', href: '#pricing' },
-  { key: 'contact', href: '#contact' },
-];
-
-function Header() {
-  const { t, language, setLanguage, languages } = useLanguage();
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-
+/** Live open/closed line computed from SCHEDULE and the visitor's clock. */
+function useOpenStatus(t: Content) {
+  const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    const id = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(id);
   }, []);
 
+  const day = (now.getDay() + 6) % 7;
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const today = SCHEDULE[day];
+  if (today && mins >= today[0] && mins < today[1]) {
+    return { open: true, text: t.status.open(clock(today[1])) };
+  }
+  if (today && mins < today[0]) {
+    return { open: false, text: t.status.opensToday(clock(today[0])) };
+  }
+  for (let ahead = 1; ahead <= 7; ahead++) {
+    const d = (day + ahead) % 7;
+    const slot = SCHEDULE[d];
+    if (slot) {
+      const at = clock(slot[0]);
+      return { open: false, text: ahead === 1 ? t.status.opensTomorrow(at) : t.status.opensOn(d, at) };
+    }
+  }
+  return { open: false, text: '' };
+}
+
+function StatusLine({ t }: { t: Content }) {
+  const status = useOpenStatus(t);
   return (
-    <header className={`site-header ${scrolled ? 'is-scrolled' : ''}`}>
-      <div className="site-header__inner">
-        <nav className={`main-nav ${menuOpen ? 'is-open' : ''}`} aria-label="Hlavná navigácia">
-          <ul>
-            {NAV_ITEMS.map((item) => (
-              <li key={item.key}>
-                <a href={item.href} onClick={() => setMenuOpen(false)}>
-                  {t.nav[item.key]}
-                </a>
-              </li>
-            ))}
-          </ul>
+    <p className={`pk-status ${status.open ? 'is-open' : ''}`}>
+      <span className="pk-status__dot" aria-hidden="true" />
+      {status.text}
+    </p>
+  );
+}
 
-          <div className="lang-switch" role="group" aria-label="Jazyk / Language">
-            {languages.map((lng) => (
-              <button
-                key={lng.code}
-                type="button"
-                className={lng.code === language ? 'is-active' : ''}
-                onClick={() => setLanguage(lng.code)}
-              >
-                {lng.label}
-              </button>
-            ))}
-          </div>
-        </nav>
+function Cloth({ className = '' }: { className?: string }) {
+  return <div className={`pk-cloth ${className}`} />;
+}
 
-        <button
-          type="button"
-          className={`menu-toggle ${menuOpen ? 'is-open' : ''}`}
-          aria-label={menuOpen ? t.nav.closeMenu : t.nav.openMenu}
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          <span />
-          <span />
-          <span />
+function LangSwitch({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
+  return (
+    <div className="pk-lang" role="group" aria-label="Jazyk / Language">
+      {LANGS.map((code) => (
+        <button key={code} type="button" aria-pressed={lang === code} onClick={() => setLang(code)}>
+          {code.toUpperCase()}
         </button>
-      </div>
-    </header>
-  );
-}
-
-/* ==================================================================
-   3. Hero
-   ================================================================== */
-
-function BreadIllustration() {
-  return (
-    <svg viewBox="0 0 420 360" className="hero-bread" aria-hidden="true">
-      <ellipse cx="210" cy="300" rx="150" ry="26" className="hero-bread__shadow" />
-      <path
-        className="hero-bread__loaf"
-        d="M55 230c-6-70 34-140 155-140s161 70 155 140c4 26-14 46-42 50-70 12-158 12-228 0-26-4-44-24-40-50Z"
-      />
-      <g className="hero-bread__slashes">
-        <path d="M120 118c14 32 14 66 2 96" />
-        <path d="M200 104c10 34 10 72 0 104" />
-        <path d="M282 118c-14 32-14 66-2 96" />
-      </g>
-      <g className="hero-bread__dust">
-        <circle cx="90" cy="90" r="4" />
-        <circle cx="330" cy="100" r="3" />
-        <circle cx="350" cy="170" r="5" />
-        <circle cx="60" cy="170" r="3" />
-      </g>
-    </svg>
-  );
-}
-
-function StampBadge({ circleText, center }: { circleText: string; center: string }) {
-  return (
-    <svg viewBox="0 0 160 160" className="stamp-badge" aria-hidden="true">
-      <circle cx="80" cy="80" r="76" className="stamp-badge__ring" />
-      <circle cx="80" cy="80" r="64" className="stamp-badge__ring-inner" />
-      <path id="stampCirclePath" d="M80,16 a64,64 0 1,1 -0.1,0" fill="none" />
-      <text className="stamp-badge__text">
-        <textPath href="#stampCirclePath" startOffset="0%">
-          {circleText.repeat(2)}
-        </textPath>
-      </text>
-      <text x="80" y="86" textAnchor="middle" className="stamp-badge__center">
-        {center}
-      </text>
-    </svg>
-  );
-}
-
-function PhotoPlaceholder({
-  label,
-  className = '',
-}: {
-  label: string;
-  className?: string;
-}) {
-  return (
-    <div className={`photo-placeholder ${className}`} role="img" aria-label={label}>
-      <svg viewBox="0 0 24 24" className="photo-placeholder__icon" aria-hidden="true">
-        <rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="1.4" />
-        <circle cx="8.5" cy="10" r="1.6" fill="none" stroke="currentColor" strokeWidth="1.4" />
-        <path d="M4 16.5 9 12l3.2 3 3-2.6L20 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-      <span className="photo-placeholder__label">{label}</span>
+      ))}
     </div>
   );
 }
 
-function Hero() {
-  const { t } = useLanguage();
+function Button({ label, onClick, href, variant = 'solid' }: { label: string; onClick?: (e: MouseEvent) => void; href: string; variant?: 'solid' | 'ghost' }) {
+  return (
+    <a href={href} onClick={onClick} className={`pk-btn pk-btn--${variant}`}>
+      <span>{label}</span>
+      <span className="pk-btn__icon" aria-hidden="true">
+        <PiArrowRightLight />
+      </span>
+    </a>
+  );
+}
+
+function Socials({ label }: { label: string }) {
+  const links = [
+    { href: BAKERY.facebook, name: 'Facebook', Icon: PiFacebookLogoLight },
+    { href: BAKERY.instagram, name: 'Instagram', Icon: PiInstagramLogoLight },
+  ].filter((l) => l.href);
+  if (!links.length) return null;
+  return (
+    <div className="pk-social" aria-label={label}>
+      {links.map(({ href, name, Icon }) => (
+        <a key={name} href={href} target="_blank" rel="noopener noreferrer" aria-label={name}>
+          <Icon />
+        </a>
+      ))}
+    </div>
+  );
+}
+
+/* =========================================================
+   Header
+   ========================================================= */
+function Header({ t, lang, setLang }: { t: Content; lang: Lang; setLang: (l: Lang) => void }) {
+  const scrolled = useScrolledPast(20);
+  const [open, setOpen] = useState(false);
+  const reduce = useReducedMotion();
+  useScrollLock(open);
+  const close = () => setOpen(false);
 
   return (
-    <section id="top" className="hero">
-      <div className="hero__inner">
-        <div className="hero__copy">
-          <span className="eyebrow">{t.hero.eyebrow}</span>
-          <h1 className="hero__title">{t.hero.title}</h1>
-          <p className="hero__subtitle">{t.hero.subtitle}</p>
-          <div className="hero__cta-row">
-            <a href="#pricing" className="btn btn--primary">
-              {t.hero.ctaMenu}
+    <>
+      <header className={`pk-header ${scrolled ? 'is-scrolled' : ''}`}>
+        <div className="pk-header__pill">
+          <a href="#top" className="pk-wordmark" onClick={go('top', close)}>
+            Pekáreň
+          </a>
+          <nav className="pk-nav" aria-label="Hlavná navigácia">
+            {NAV.map((item) => (
+              <a key={item.id} href={`#${item.id}`} onClick={go(item.id)}>
+                {t.nav[item.key]}
+              </a>
+            ))}
+          </nav>
+          <div className="pk-header__actions">
+            <LangSwitch lang={lang} setLang={setLang} />
+            <a href="#contact" className="pk-header__cta" onClick={go('contact', close)}>
+              {t.cta}
             </a>
-            <a href="#contact" className="btn btn--ghost">
-              {t.hero.ctaOrder}
-            </a>
+            <button
+              type="button"
+              className={`pk-burger ${open ? 'is-open' : ''}`}
+              aria-label={open ? t.nav.close : t.nav.menu}
+              aria-expanded={open}
+              aria-controls="pk-menu"
+              onClick={() => setOpen((v) => !v)}
+            >
+              <span />
+              <span />
+            </button>
           </div>
         </div>
+      </header>
 
-        <div className="hero__visual">
-          <PhotoPlaceholder label="Fotka: pekáreň / čerstvý chlieb" className="hero__photo" />
-          <BreadIllustration />
-          <div className="hero__stamp-wrap">
-            <StampBadge circleText={t.hero.badgeCircleText} center={t.hero.badgeCenter} />
-          </div>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            id="pk-menu"
+            className="pk-menu"
+            data-lenis-prevent
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease: EASE_OUT }}
+          >
+            <nav className="pk-menu__nav" aria-label="Mobilná navigácia">
+              {NAV.map((item, i) => (
+                <motion.a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  onClick={go(item.id, close)}
+                  initial={reduce ? false : { y: 40, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.8, delay: 0.08 + i * 0.06, ease: EASE_OUT }}
+                >
+                  {t.nav[item.key]}
+                </motion.a>
+              ))}
+            </nav>
+            <div className="pk-menu__foot">
+              <StatusLine t={t} />
+              <a href={BAKERY.phoneHref}>{BAKERY.phone}</a>
+              <LangSwitch lang={lang} setLang={setLang} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+/* =========================================================
+   Hero
+   ========================================================= */
+function Stamp({ text }: { text: string }) {
+  return (
+    <div className="pk-stamp" aria-hidden="true">
+      <svg viewBox="0 0 200 200" className="pk-stamp__ring">
+        <defs>
+          <path id="pk-stamp-path" d="M100,100 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0" />
+        </defs>
+        <text>
+          <textPath href="#pk-stamp-path" textLength="488">
+            {text}
+          </textPath>
+        </text>
+      </svg>
+      <span className="pk-stamp__center">
+        <PiGrainsLight />
+        <strong>1998</strong>
+      </span>
+    </div>
+  );
+}
+
+function Hero({ t }: { t: Content }) {
+  const reduce = useReducedMotion();
+  const ref = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] });
+  const archY = useTransform(scrollYProgress, [0, 1], ['0%', '10%']);
+  const clothScale = useTransform(scrollYProgress, [0, 1], [1, 1.12]);
+
+  const rise = (delay: number) =>
+    reduce
+      ? {}
+      : {
+          initial: { opacity: 0, y: 26 },
+          animate: { opacity: 1, y: 0 },
+          transition: { duration: 1, delay, ease: EASE_OUT },
+        };
+
+  return (
+    <section className="pk-hero" id="top" ref={ref}>
+      <div className="pk-wrap pk-hero__grid">
+        <div className="pk-hero__copy">
+          <motion.div {...rise(0)}>
+            <StatusLine t={t} />
+          </motion.div>
+          <h1 className="pk-hero__title">
+            {[t.hero.title[0], t.hero.title[1]].map((line, i) => (
+              <span className="pk-hero__mask" key={i}>
+                <motion.span
+                  className="pk-hero__line"
+                  initial={reduce ? false : { y: '110%' }}
+                  animate={{ y: '0%' }}
+                  transition={{ duration: 1.1, delay: 0.1 + i * 0.12, ease: EASE_OUT }}
+                >
+                  {i === 0 ? (
+                    line
+                  ) : (
+                    <>
+                      {line && `${line} `}
+                      <span className="is-accent">{t.hero.accent}</span>
+                    </>
+                  )}
+                </motion.span>
+              </span>
+            ))}
+          </h1>
+          <motion.p className="pk-hero__subtitle" {...rise(0.45)}>
+            {t.hero.subtitle}
+          </motion.p>
+          <motion.div className="pk-hero__ctas" {...rise(0.55)}>
+            <Button href="#categories" label={t.hero.ctaMenu} onClick={go('categories')} />
+            <Button href="#contact" label={t.cta} onClick={go('contact')} variant="ghost" />
+          </motion.div>
+        </div>
+
+        <div className="pk-hero__media">
+          <motion.div
+            className="pk-arch"
+            initial={reduce ? false : { clipPath: 'inset(100% 0% 0% 0% round 999px 999px 28px 28px)' }}
+            animate={{ clipPath: 'inset(0% 0% 0% 0% round 999px 999px 28px 28px)' }}
+            transition={{ duration: 1.4, delay: 0.2, ease: EASE_OUT }}
+            style={reduce ? undefined : { y: archY }}
+          >
+            <div className="pk-arch__inner">
+              <motion.div className="pk-arch__zoom" style={reduce ? undefined : { scale: clothScale }}>
+                <Photo src={PHOTOS.hero} alt={`${t.hero.title.join(' ')} ${t.hero.accent}`} className="pk-arch__photo" fallback={<Cloth />} />
+              </motion.div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            className="pk-hero__stamp"
+            initial={reduce ? false : { scale: 0.6, opacity: 0, rotate: -40 }}
+            animate={{ scale: 1, opacity: 1, rotate: 0 }}
+            transition={{ type: 'spring', stiffness: 120, damping: 16, delay: 0.9 }}
+          >
+            <Stamp text={t.hero.stamp} />
+          </motion.div>
         </div>
       </div>
-
-      <div className="scallop-divider" aria-hidden="true" />
     </section>
   );
 }
 
-/* ==================================================================
-   4. About
-   ================================================================== */
-
-function DoughIllustration() {
+/* =========================================================
+   Marquee
+   ========================================================= */
+function Marquee({ words }: { words: string[] }) {
+  const row = (hidden: boolean) => (
+    <div className="pk-marquee__row" aria-hidden={hidden || undefined}>
+      {words.map((w) => (
+        <span className="pk-marquee__item" key={w}>
+          {w}
+          <PiGrainsLight aria-hidden="true" />
+        </span>
+      ))}
+    </div>
+  );
   return (
-    <svg viewBox="0 0 320 320" className="about-illustration" aria-hidden="true">
-      <circle cx="160" cy="160" r="150" className="about-illustration__ring" />
-      <ellipse cx="160" cy="195" rx="110" ry="60" className="about-illustration__board" />
-      <path
-        className="about-illustration__pin-handle"
-        d="M60 120c0-10 8-18 18-18s18 8 18 18-8 18-18 18-18-8-18-18Z"
-      />
-      <rect x="90" y="112" width="150" height="16" rx="8" className="about-illustration__pin" />
-      <path
-        className="about-illustration__pin-handle"
-        d="M232 120c0-10 8-18 18-18s18 8 18 18-8 18-18 18-18-8-18-18Z"
-      />
-      <g className="about-illustration__dust">
-        <circle cx="120" cy="150" r="3" />
-        <circle cx="200" cy="145" r="2.5" />
-        <circle cx="160" cy="160" r="2" />
-        <circle cx="140" cy="170" r="2.5" />
-        <circle cx="185" cy="168" r="2" />
-      </g>
-    </svg>
+    <div className="pk-marquee">
+      <div className="pk-marquee__track">
+        {row(false)}
+        {row(true)}
+      </div>
+    </div>
   );
 }
 
-function ValueIcon() {
+/* =========================================================
+   About
+   ========================================================= */
+function About({ t }: { t: Content }) {
   return (
-    <svg viewBox="0 0 24 24" className="value-card__icon" aria-hidden="true">
-      <path
-        d="M4 12c2-5 6-8 8-8s6 3 8 8c-2 5-6 8-8 8s-6-3-8-8Z"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        fill="none"
-      />
-      <circle cx="12" cy="12" r="2.2" fill="currentColor" />
-    </svg>
-  );
-}
+    <section className="pk-section pk-about" id="about">
+      <div className="pk-wrap pk-about__grid">
+        <Reveal className="pk-about__visual">
+          <p className="pk-about__year" aria-hidden="true">
+            1998
+          </p>
+          <div className="pk-about__frame">
+            <Photo src={PHOTOS.about} alt={t.about.title} className="pk-about__photo" fallback={<Cloth className="pk-cloth--dots" />} />
+          </div>
+        </Reveal>
 
-function About() {
-  const { t } = useLanguage();
-
-  return (
-    <section id="about" className="about">
-      <div className="about__inner">
-        <div className="about__visual">
-          <PhotoPlaceholder label="Fotka: rodina pri práci v pekárni" className="about__photo" />
-          <DoughIllustration />
-        </div>
-
-        <div className="about__content">
-          <span className="eyebrow">{t.about.eyebrow}</span>
-          <h2 className="section-title">{t.about.title}</h2>
-          <p className="about__paragraph">{t.about.paragraph}</p>
-
-          <ul className="value-list">
-            {t.about.values.map((value) => (
-              <li key={value.title} className="value-card">
-                <ValueIcon />
-                <div>
-                  <h3>{value.title}</h3>
-                  <p>{value.text}</p>
-                </div>
-              </li>
-            ))}
+        <div className="pk-about__content">
+          <Reveal>
+            <h2 className="pk-h2">{t.about.title}</h2>
+            <p className="pk-lead">{t.about.paragraph}</p>
+          </Reveal>
+          <ul className="pk-values">
+            {t.about.values.map((v, i) => {
+              const Icon = v.icon;
+              return (
+                <Reveal as="li" key={v.title} className="pk-value" delay={i * 0.08}>
+                  <span className="pk-value__icon" aria-hidden="true">
+                    <Icon />
+                  </span>
+                  <div>
+                    <h3>{v.title}</h3>
+                    <p>{v.text}</p>
+                  </div>
+                </Reveal>
+              );
+            })}
           </ul>
         </div>
       </div>
@@ -750,467 +722,435 @@ function About() {
   );
 }
 
-/* ==================================================================
-   5. Categories
-   ================================================================== */
-
-const CATEGORY_ICONS: Record<IconKey, ReactElement> = {
-  wheat: (
-    <path d="M12 21V6M12 6c-2 1.6-4.6 1.6-6.6 0M12 6c2 1.6 4.6 1.6 6.6 0M12 10.6c-2 1.6-4.6 1.6-6.6 0M12 10.6c2 1.6 4.6 1.6 6.6 0M12 15.2c-2 1.6-4.6 1.6-6.6 0M12 15.2c2 1.6 4.6 1.6 6.6 0" />
-  ),
-  croissant: (
-    <path d="M3 15c1-5 5-9 9-9 3 0 5 1.4 5 3.4 0 1.3-1 2-2.1 2.6 1.7.3 3.1 1.4 3.1 3 0 2.6-3.6 4-7 4-3.8 0-8-1.3-8-4Z" />
-  ),
-  cake: (
-    <path d="M4 20v-6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v6H4Zm3-9V8m5 3V6m5 5V8M9 8c0-1.1.9-2.5 2-3M15 8c0-1.1-.9-2.5-2-3" />
-  ),
-  cookie: (
-    <path d="M12 3a9 9 0 1 0 9 9c-1.7 0-3-1.3-3-3a3 3 0 0 1 .3-1.3A3 3 0 0 1 15 6a3 3 0 0 1-3-3ZM9 11a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm2 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm5-2a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
-  ),
-  pretzel: (
-    <path d="M8 6c-3 0-5 2.5-5 5.5S5 17 8 17c2 0 3-1.2 4-3 1 1.8 2 3 4 3 3 0 5-2.5 5-5.5S19 6 16 6c-2.2 0-3.6 2-4 4-.4-2-1.8-4-4-4Z" />
-  ),
-};
-
-function Categories() {
-  const { t } = useLanguage();
+/* =========================================================
+   Categories: expanding strips
+   ========================================================= */
+function Categories({ t }: { t: Content }) {
+  const [active, setActive] = useState(0);
 
   return (
-    <section id="categories" className="categories">
-      <div className="categories__inner">
-        <div className="categories__heading">
-          <span className="eyebrow">{t.categories.eyebrow}</span>
-          <h2 className="section-title">{t.categories.title}</h2>
-          <p className="section-subtitle">{t.categories.subtitle}</p>
-        </div>
+    <section className="pk-section pk-categories" id="categories">
+      <div className="pk-wrap">
+        <Reveal className="pk-categories__head">
+          <h2 className="pk-h2">{t.categories.title}</h2>
+          <p className="pk-lead">{t.categories.subtitle}</p>
+        </Reveal>
 
-        <div className="categories__grid">
-          {t.categories.items.map((item) => (
-            <article key={item.name} className="category-card">
-              <PhotoPlaceholder label={`Fotka: ${item.name}`} className="category-card__photo" />
-              <svg viewBox="0 0 24 24" className="category-card__icon" aria-hidden="true">
-                <g
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+        <Reveal className="pk-strips">
+          {t.categories.items.map((item, i) => {
+            const Icon = item.icon;
+            const isActive = i === active;
+            return (
+              <article
+                key={item.name}
+                className={`pk-strip pk-strip--${i} ${isActive ? 'is-active' : ''}`}
+                onMouseEnter={() => setActive(i)}
+                onFocus={() => setActive(i)}
+                onClick={() => setActive(i)}
+                tabIndex={0}
+              >
+                <Photo
+                  src={PHOTOS.categories[i]}
+                  alt={item.name}
+                  className="pk-strip__photo"
+                  fallback={<Cloth className={i % 2 ? 'pk-cloth--dots' : ''} />}
+                />
+                <div className="pk-strip__body">
+                  <span className="pk-strip__icon" aria-hidden="true">
+                    <Icon />
+                  </span>
+                  <h3>{item.name}</h3>
+                  <p>{item.desc}</p>
+                </div>
+              </article>
+            );
+          })}
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================
+   Pricing: menu board
+   ========================================================= */
+function Pricing({ t }: { t: Content }) {
+  const [active, setActive] = useState(t.pricing.categories[0].id);
+  const reduce = useReducedMotion();
+  const category = t.pricing.categories.find((c) => c.id === active) ?? t.pricing.categories[0];
+
+  return (
+    <section className="pk-section pk-pricing" id="pricing">
+      <div className="pk-wrap pk-pricing__grid">
+        <Reveal className="pk-pricing__head">
+          <h2 className="pk-h2">{t.pricing.title}</h2>
+          <p className="pk-lead">{t.pricing.subtitle}</p>
+          <p className="pk-pricing__note">{t.pricing.note}</p>
+        </Reveal>
+
+        <Reveal className="pk-board-shell" delay={0.1}>
+          <div className="pk-board">
+            <div className="pk-tabs" role="tablist" aria-label={t.pricing.title}>
+              {t.pricing.categories.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  role="tab"
+                  id={`pk-tab-${c.id}`}
+                  aria-selected={c.id === category.id}
+                  aria-controls="pk-tabpanel"
+                  onClick={() => setActive(c.id)}
                 >
-                  {CATEGORY_ICONS[item.icon]}
-                </g>
-              </svg>
-              <h3>{item.name}</h3>
-              <p>{item.desc}</p>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ==================================================================
-   6. Pricing
-   ================================================================== */
-
-function Pricing() {
-  const { t } = useLanguage();
-  const [active, setActive] = useState(t.pricing.categories[0]?.id);
-
-  const activeCategory =
-    t.pricing.categories.find((c) => c.id === active) ?? t.pricing.categories[0];
-
-  return (
-    <section id="pricing" className="pricing">
-      <div className="pricing__inner">
-        <div className="pricing__heading">
-          <span className="eyebrow">{t.pricing.eyebrow}</span>
-          <h2 className="section-title">{t.pricing.title}</h2>
-          <p className="section-subtitle">{t.pricing.subtitle}</p>
-        </div>
-
-        <div className="pricing__tabs" role="tablist" aria-label={t.pricing.title}>
-          {t.pricing.categories.map((cat) => (
-            <button
-              key={cat.id}
-              role="tab"
-              type="button"
-              aria-selected={cat.id === activeCategory?.id}
-              className={`pricing__tab ${cat.id === activeCategory?.id ? 'is-active' : ''}`}
-              onClick={() => setActive(cat.id)}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="price-tag-grid">
-          {activeCategory?.items.map((item) => (
-            <div className="price-tag" key={item.name}>
-              <span className="price-tag__hole" />
-              <span className="price-tag__name">{item.name}</span>
-              <span className="price-tag__price">{item.price}</span>
+                  {c.id === category.id && (
+                    <motion.span layoutId="pk-tab-pill" className="pk-tabs__pill" transition={{ type: 'spring', stiffness: 380, damping: 32 }} />
+                  )}
+                  <span className="pk-tabs__label">{c.label}</span>
+                </button>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <p className="pricing__note">{t.pricing.note}</p>
-      </div>
-    </section>
-  );
-}
-
-/* ==================================================================
-   7. Testimonials
-   ================================================================== */
-
-function Testimonials() {
-  const { t } = useLanguage();
-
-  return (
-    <section className="testimonials" aria-label={t.testimonials.title}>
-      <div className="testimonials__inner">
-        <div className="testimonials__heading">
-          <span className="eyebrow">{t.testimonials.eyebrow}</span>
-          <h2 className="section-title">{t.testimonials.title}</h2>
-        </div>
-
-        <div className="testimonials__track">
-          {t.testimonials.items.map((item) => (
-            <figure className="testimonial-card" key={item.author}>
-              <PhotoPlaceholder label={`Fotka: ${item.author}`} className="testimonial-card__photo" />
-              <blockquote>&ldquo;{item.quote}&rdquo;</blockquote>
-              <figcaption>
-                <span className="testimonial-card__author">{item.author}</span>
-                <span className="testimonial-card__role">{item.role}</span>
-              </figcaption>
-            </figure>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ==================================================================
-   8. Contact
-   ================================================================== */
-
-const BAKERY_EMAIL = 'info@pekaren.sk';
-
-function SocialIcon({ kind }: { kind: 'facebook' | 'instagram' }) {
-  if (kind === 'facebook') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.4" />
-        <path
-          d="M13.8 8.4h1.4V6.2h-1.7c-1.7 0-2.8 1-2.8 2.8v1.3H9.3v2.3h1.4V18h2.3v-5.4h1.6l.3-2.3h-1.9V9.4c0-.6.2-1 .8-1Z"
-          fill="currentColor"
-        />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <circle cx="17" cy="7" r="1.1" fill="currentColor" />
-    </svg>
-  );
-}
-
-function Contact() {
-  const { t } = useLanguage();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    const bodyLines = [
-      `${t.contact.formName}: ${name}`,
-      `${t.contact.formEmail}: ${email}`,
-      '',
-      message,
-    ];
-
-    const mailto =
-      `mailto:${BAKERY_EMAIL}` +
-      `?subject=${encodeURIComponent(subject || t.contact.title)}` +
-      `&body=${encodeURIComponent(bodyLines.join('\n'))}`;
-
-    window.location.href = mailto;
-  };
-
-  return (
-    <section id="contact" className="contact">
-      <div className="contact__inner">
-        <div className="contact__heading">
-          <span className="eyebrow">{t.contact.eyebrow}</span>
-          <h2 className="section-title">{t.contact.title}</h2>
-          <p className="section-subtitle">{t.contact.subtitle}</p>
-        </div>
-
-        <div className="contact__grid">
-          <form className="contact-form" onSubmit={handleSubmit}>
-            <label>
-              <span>{t.contact.formName}</span>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                autoComplete="name"
-              />
-            </label>
-            <label>
-              <span>{t.contact.formEmail}</span>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-              />
-            </label>
-            <label>
-              <span>{t.contact.formSubject}</span>
-              <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} />
-            </label>
-            <label>
-              <span>{t.contact.formMessage}</span>
-              <textarea
-                required
-                rows={5}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-              />
-            </label>
-            <button type="submit" className="btn btn--primary">
-              {t.contact.formSubmit}
-            </button>
-            <p className="contact-form__note">{t.contact.formNote}</p>
-          </form>
-
-          <div className="contact-info">
-            <h3>{t.contact.infoTitle}</h3>
-            <ul className="contact-info__list">
-              <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21Z"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.4"
-                  />
-                  <circle cx="12" cy="9.5" r="2.4" fill="currentColor" />
-                </svg>
-                <span>{t.contact.address}</span>
-              </li>
-              <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M6 4h3l1.5 4-2 1.5a11 11 0 0 0 6 6L16 13.5 20 15v3a2 2 0 0 1-2 2C11.3 20 4 12.7 4 6a2 2 0 0 1 2-2Z"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.4"
-                  />
-                </svg>
-                <a href={`tel:${t.contact.phone.replace(/\s+/g, '')}`}>{t.contact.phone}</a>
-              </li>
-              <li>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="1.4" />
-                  <path d="M4 6.5 12 13l8-6.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
-                </svg>
-                <a href={`mailto:${BAKERY_EMAIL}`}>{t.contact.email}</a>
-              </li>
-            </ul>
-
-            <h3>{t.contact.hoursTitle}</h3>
-            <table className="hours-table">
-              <tbody>
-                {t.contact.hours.map((row) => (
-                  <tr key={row.day}>
-                    <td>{row.day}</td>
-                    <td>{row.time}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <h3>{t.contact.socialTitle}</h3>
-            <div className="social-row">
-              <a href="#" aria-label="Facebook" className="social-row__link">
-                <SocialIcon kind="facebook" />
-              </a>
-              <a href="#" aria-label="Instagram" className="social-row__link">
-                <SocialIcon kind="instagram" />
-              </a>
+            <div className="pk-menu-list" role="tabpanel" id="pk-tabpanel" aria-labelledby={`pk-tab-${category.id}`}>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.ul
+                  key={category.id}
+                  initial={reduce ? false : { opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduce ? undefined : { opacity: 0, y: -8 }}
+                  transition={{ duration: 0.35, ease: EASE_OUT }}
+                >
+                  {category.items.map((item) => (
+                    <li key={item.name} className="pk-menu-item">
+                      <span className="pk-menu-item__name">{item.name}</span>
+                      <span className="pk-menu-item__leader" aria-hidden="true" />
+                      <span className="pk-menu-item__price">{item.price}</span>
+                    </li>
+                  ))}
+                </motion.ul>
+              </AnimatePresence>
             </div>
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   );
 }
 
-/* ==================================================================
-   9. Map
-   ================================================================== */
+/* =========================================================
+   Testimonials: one voice at a time
+   ========================================================= */
+function Testimonials({ t }: { t: Content }) {
+  const items = t.testimonials.items;
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const reduce = useReducedMotion();
 
-const MAP_LAT = 48.4353;
-const MAP_LON = 17.0173;
-const MAP_BBOX = '17.001,48.424,17.034,48.447';
+  useEffect(() => {
+    if (reduce || paused) return;
+    const id = window.setTimeout(() => setIndex((i) => (i + 1) % items.length), 7000);
+    return () => window.clearTimeout(id);
+  }, [index, paused, reduce, items.length]);
 
-function MapSection() {
-  const { t } = useLanguage();
-
-  const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${MAP_BBOX}&layer=mapnik&marker=${MAP_LAT},${MAP_LON}`;
-  const directionsHref = `https://www.google.com/maps/dir/?api=1&destination=${MAP_LAT},${MAP_LON}`;
-
-  return (
-    <section className="map-section" aria-label={t.map.title}>
-      <div className="map-section__inner">
-        <div className="map-section__heading">
-          <span className="eyebrow">{t.map.eyebrow}</span>
-          <h2 className="section-title">{t.map.title}</h2>
-        </div>
-
-        <div className="map-section__frame">
-          <iframe
-            title={t.map.title}
-            src={mapSrc}
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
-        </div>
-
-        <a
-          href={directionsHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn btn--ghost map-section__cta"
-        >
-          {t.map.directions}
-        </a>
-      </div>
-    </section>
-  );
-}
-
-/* ==================================================================
-   10. Footer
-   ================================================================== */
-
-function Footer() {
-  const { t, language, setLanguage, languages } = useLanguage();
-  const year = new Date().getFullYear();
+  const item = items[index];
+  const initials = (name: string) =>
+    name
+      .split(/\s+/)
+      .filter((w) => w.length > 1 && /^\p{L}/u.test(w))
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join('');
 
   return (
-    <footer className="site-footer">
-      <div className="site-footer__inner">
-        <div className="site-footer__brand">
-          <span className="site-footer__logo">Pekáreň</span>
-          <p>{t.footer.tagline}</p>
-          <div className="lang-switch lang-switch--footer" role="group" aria-label="Jazyk / Language">
-            {languages.map((lng) => (
-              <button
-                key={lng.code}
-                type="button"
-                className={lng.code === language ? 'is-active' : ''}
-                onClick={() => setLanguage(lng.code)}
-              >
-                {lng.label}
+    <section
+      className="pk-section pk-voices"
+      aria-label={t.testimonials.title}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+    >
+      <div className="pk-wrap pk-voices__grid">
+        <Reveal className="pk-voices__head">
+          <h2 className="pk-h2">{t.testimonials.title}</h2>
+          <div className="pk-voices__people" role="group" aria-label={t.testimonials.title}>
+            {items.map((it, i) => (
+              <button key={it.author} type="button" aria-pressed={i === index} onClick={() => setIndex(i)} aria-label={it.author}>
+                <span className="pk-voices__avatar">{initials(it.author)}</span>
               </button>
             ))}
           </div>
-        </div>
+        </Reveal>
 
-        <div className="site-footer__col">
-          <h4>{t.footer.quickLinksTitle}</h4>
-          <ul>
-            <li>
-              <a href="#about">{t.nav.about}</a>
-            </li>
-            <li>
-              <a href="#categories">{t.nav.categories}</a>
-            </li>
-            <li>
-              <a href="#pricing">{t.nav.pricing}</a>
-            </li>
-            <li>
-              <a href="#contact">{t.nav.contact}</a>
-            </li>
-          </ul>
-        </div>
-
-        <div className="site-footer__col">
-          <h4>{t.footer.contactTitle}</h4>
-          <ul>
-            <li>{t.contact.address}</li>
-            <li>
-              <a href={`tel:${t.contact.phone.replace(/\s+/g, '')}`}>{t.contact.phone}</a>
-            </li>
-            <li>
-              <a href="mailto:info@pekaren.sk">info@pekaren.sk</a>
-            </li>
-          </ul>
-        </div>
-
-        <div className="site-footer__col">
-          <h4>{t.footer.hoursTitle}</h4>
-          <ul>
-            {t.contact.hours.map((row) => (
-              <li key={row.day}>
-                {row.day}: {row.time}
-              </li>
-            ))}
-          </ul>
+        <div className="pk-voices__stage" aria-live="polite">
+          <PiQuotesFill className="pk-voices__mark" aria-hidden="true" />
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.figure
+              key={item.author}
+              initial={reduce ? false : { opacity: 0, y: 24, filter: 'blur(6px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={reduce ? undefined : { opacity: 0, y: -16, filter: 'blur(6px)' }}
+              transition={{ duration: 0.6, ease: EASE_OUT }}
+            >
+              <blockquote>{item.quote}</blockquote>
+              <figcaption>
+                <strong>{item.author}</strong>
+                <span>{item.role}</span>
+              </figcaption>
+            </motion.figure>
+          </AnimatePresence>
         </div>
       </div>
+    </section>
+  );
+}
 
-      <div className="site-footer__bottom">
-        <span>© {year} Pekáreň. {t.footer.rights}</span>
+/* =========================================================
+   Contact
+   ========================================================= */
+type FieldErrors = Partial<Record<'name' | 'email' | 'message', string>>;
+
+function Contact({ t }: { t: Content }) {
+  const c = t.contact;
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [opened, setOpened] = useState(false);
+  const today = todayIndex();
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    const name = String(data.get('name') ?? '').trim();
+    const email = String(data.get('email') ?? '').trim();
+    const subject = String(data.get('subject') ?? '').trim();
+    const message = String(data.get('message') ?? '').trim();
+
+    const next: FieldErrors = {};
+    if (!name) next.name = c.errName;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = c.errEmail;
+    if (!message) next.message = c.errMessage;
+    setErrors(next);
+    const firstError = Object.keys(next)[0];
+    if (firstError) {
+      e.currentTarget.querySelector<HTMLElement>(`[name="${firstError}"]`)?.focus();
+      return;
+    }
+
+    const body = [`${c.name}: ${name}`, `${c.email}: ${email}`, '', message].join('\n');
+    window.location.href = `mailto:${BAKERY.email}?subject=${encodeURIComponent(subject || c.title)}&body=${encodeURIComponent(body)}`;
+    setOpened(true);
+  };
+
+  const field = (key: 'name' | 'email' | 'subject' | 'message', label: string, type = 'text') => {
+    const err = key !== 'subject' ? errors[key] : undefined;
+    const id = `pk-${key}`;
+    const props = {
+      id,
+      name: key,
+      'aria-invalid': err ? true : undefined,
+      'aria-describedby': err ? `${id}-err` : undefined,
+      onInput: () => err && setErrors((prev) => ({ ...prev, [key]: undefined })),
+    };
+    return (
+      <div className={`pk-field ${err ? 'has-error' : ''}`}>
+        <label htmlFor={id}>
+          {label}
+          {key === 'subject' && <span className="pk-field__opt">{c.optional}</span>}
+        </label>
+        {key === 'message' ? (
+          <textarea {...props} rows={5} />
+        ) : (
+          <input {...props} type={type} autoComplete={key === 'name' ? 'name' : key === 'email' ? 'email' : 'off'} />
+        )}
+        {err && (
+          <p className="pk-field__error" id={`${id}-err`}>
+            <PiWarningCircleLight aria-hidden="true" />
+            {err}
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <section className="pk-section pk-contact" id="contact">
+      <div className="pk-wrap">
+        <Reveal className="pk-contact__head">
+          <h2 className="pk-h2">{c.title}</h2>
+          <p className="pk-lead">{c.subtitle}</p>
+        </Reveal>
+
+        <div className="pk-contact__grid">
+          <Reveal className="pk-card-shell">
+            <form className="pk-form" onSubmit={handleSubmit} noValidate>
+              <div className="pk-form__row">
+                {field('name', c.name)}
+                {field('email', c.email, 'email')}
+              </div>
+              {field('subject', c.subject)}
+              {field('message', c.message)}
+              <button type="submit" className="pk-btn pk-btn--solid pk-btn--block">
+                <span>{c.submit}</span>
+                <span className="pk-btn__icon" aria-hidden="true">
+                  <PiArrowRightLight />
+                </span>
+              </button>
+              <p className="pk-form__note" role="status">
+                {opened ? (
+                  <>
+                    {c.opened} <a href={`mailto:${BAKERY.email}`}>{BAKERY.email}</a>.
+                  </>
+                ) : (
+                  c.note
+                )}
+              </p>
+            </form>
+          </Reveal>
+
+          <Reveal className="pk-contact__aside" delay={0.1}>
+            <div className="pk-hours">
+              <h3 className="pk-h3">{c.hoursTitle}</h3>
+              <StatusLine t={t} />
+              <dl>
+                {c.hours.map((row) => {
+                  const isToday = row.days.includes(today);
+                  return (
+                    <div key={row.label} className={isToday ? 'is-today' : ''}>
+                      <dt>
+                        {row.label}
+                        {isToday && <span className="pk-hours__today">{c.today}</span>}
+                      </dt>
+                      <dd>{row.time}</dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            </div>
+
+            <h3 className="pk-h3">{c.infoTitle}</h3>
+            <ul className="pk-info">
+              <li>
+                <PiMapPinLight aria-hidden="true" />
+                <span>{c.address}</span>
+              </li>
+              <li>
+                <PiPhoneLight aria-hidden="true" />
+                <a href={BAKERY.phoneHref}>{BAKERY.phone}</a>
+              </li>
+              <li>
+                <PiEnvelopeSimpleLight aria-hidden="true" />
+                <a href={`mailto:${BAKERY.email}`}>{BAKERY.email}</a>
+              </li>
+            </ul>
+            <Socials label={c.social} />
+          </Reveal>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================
+   Map
+   ========================================================= */
+function MapSection({ t }: { t: Content }) {
+  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${MAP.bbox}&layer=mapnik&marker=${MAP.lat},${MAP.lon}`;
+  const directions = `https://www.google.com/maps/dir/?api=1&destination=${MAP.lat},${MAP.lon}`;
+
+  return (
+    <section className="pk-map" aria-label={t.map.title}>
+      <div className="pk-wrap pk-map__inner">
+        <Reveal className="pk-map__frame">
+          <iframe title={t.map.title} src={src} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+        </Reveal>
+        <Reveal className="pk-map__card" delay={0.15}>
+          <PiMapPinLight className="pk-map__icon" aria-hidden="true" />
+          <h2 className="pk-h3">{t.map.title}</h2>
+          <p>{t.contact.address}</p>
+          <a className="pk-link" href={directions} target="_blank" rel="noopener noreferrer">
+            {t.map.directions}
+            <PiArrowUpRightLight aria-hidden="true" />
+          </a>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================
+   Footer
+   ========================================================= */
+function Footer({ t, lang, setLang }: { t: Content; lang: Lang; setLang: (l: Lang) => void }) {
+  return (
+    <footer className="pk-footer">
+      <div className="pk-wrap">
+        <div className="pk-footer__grid">
+          <div className="pk-footer__brand">
+            <p className="pk-footer__tagline">{t.footer.tagline}</p>
+            <LangSwitch lang={lang} setLang={setLang} />
+          </div>
+          <nav className="pk-footer__col" aria-label={t.footer.links}>
+            <h4>{t.footer.links}</h4>
+            {NAV.map((item) => (
+              <a key={item.id} href={`#${item.id}`} onClick={go(item.id)}>
+                {t.nav[item.key]}
+              </a>
+            ))}
+          </nav>
+          <div className="pk-footer__col">
+            <h4>{t.footer.contact}</h4>
+            <span>{t.contact.address}</span>
+            <a href={BAKERY.phoneHref}>{BAKERY.phone}</a>
+            <a href={`mailto:${BAKERY.email}`}>{BAKERY.email}</a>
+          </div>
+          <div className="pk-footer__col">
+            <h4>{t.footer.hours}</h4>
+            {t.contact.hours.map((row) => (
+              <span key={row.label}>
+                {row.label} <b>{row.time}</b>
+              </span>
+            ))}
+          </div>
+        </div>
+        <p className="pk-footer__word" aria-hidden="true">
+          Pekáreň
+        </p>
+        <div className="pk-footer__bottom">
+          <span>
+            © {new Date().getFullYear()} {BAKERY.name}. {t.footer.rights}
+          </span>
+          <button type="button" onClick={scrollToTop}>
+            {t.footer.top}
+          </button>
+        </div>
       </div>
     </footer>
   );
 }
 
-/* ==================================================================
-   11. Page composition / App
-   ================================================================== */
-
-function PageContent() {
-  const { t } = useLanguage();
-
-  useEffect(() => {
-    document.title = t.meta.title;
-  }, [t]);
-
-  return (
-    <>
-      <Header />
-      <main>
-        <Hero />
-        <About />
-        <Categories />
-        <Pricing />
-        <Testimonials />
-        <Contact />
-        <MapSection />
-      </main>
-      <Footer />
-    </>
-  );
-}
-
+/* =========================================================
+   Page
+   ========================================================= */
 export default function Pekaren() {
+  const [lang, setLang] = useStoredLang<Lang>('pekaren-lang', LANGS, 'sk');
+  const t = content[lang];
+  useSmoothScroll();
+  useDocumentTitle(t.meta);
+
   return (
-    <LanguageProvider>
-      <PageContent />
-    </LanguageProvider>
+    <div className="pk">
+      <a className="pk-skip" href="#obsah" onClick={go('obsah', () => document.getElementById('obsah')?.focus())}>
+        {t.nav.skip}
+      </a>
+      <Header t={t} lang={lang} setLang={setLang} />
+      <main id="obsah" tabIndex={-1}>
+        <Hero t={t} />
+        <Marquee words={t.marquee} />
+        <About t={t} />
+        <Categories t={t} />
+        <Pricing t={t} />
+        <Testimonials t={t} />
+        <Contact t={t} />
+        <MapSection t={t} />
+      </main>
+      <Footer t={t} lang={lang} setLang={setLang} />
+    </div>
   );
 }

@@ -1,0 +1,7 @@
+/* Global baseline. Without this, browsers add an 8px margin around the
+   page, which showed up as a white strip along the edges. */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}

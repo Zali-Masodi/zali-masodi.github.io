@@ -1224,7 +1224,7 @@ function Footer({ t, lang, setLang }: { t: Content; lang: Lang; setLang: (l: Lan
         </div>
       </div>
       <p className="dv-footer__word" aria-hidden="true">
-        Moving Co.
+        Moving <span>Co.</span>
       </p>
       <div className="dv-wrap dv-footer__bottom">
         <span>

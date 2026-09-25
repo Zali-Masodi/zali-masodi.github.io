@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import "./snake.css";
+import "./Snake.css";
 
 /* -------------------------------------------------------------------- */
 /*  DATA                                                                  */

@@ -1,0 +1,25 @@
+/* Lenis needs native smooth scrolling off, or the two fight each other. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+html.lenis {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: clip;
+}
+
+.kit-photo {
+  position: relative;
+  overflow: hidden;
+}
+.kit-photo > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.kit-photo--fallback {
+  isolation: isolate;
+}
